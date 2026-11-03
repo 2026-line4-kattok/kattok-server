@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# main 직접 푸시와 규칙에 맞지 않는 브랜치 푸시를 막는다. 규칙은 README의 "브랜치 규칙" 참고.
+
+zero='^0+$'
+pattern='^(feat|fix|refactor|test|docs|chore|build|ci)/([0-9]+-)?[a-z0-9]+(-[a-z0-9]+)*$'
+
+while read -r _ local_sha remote_ref _; do
+  # 원격 브랜치 삭제와 태그 푸시는 검사하지 않는다.
+  [[ "$local_sha" =~ $zero ]] && continue
+  [[ "$remote_ref" == refs/heads/* ]] || continue
+
+  branch=${remote_ref#refs/heads/}
+  if [[ "$branch" == "main" ]]; then
+    echo "main에는 직접 푸시할 수 없습니다. 작업 브랜치에서 PR을 올려주세요." >&2
+    exit 1
+  fi
+  if [[ ! "$branch" =~ $pattern ]]; then
+    echo "브랜치 이름이 올바르지 않습니다: $branch" >&2
+    echo "형식: <type>/<이슈번호>-<kebab-case 설명>  (이슈번호 생략 가능)" >&2
+    echo "예시: feat/12-card-search" >&2
+    exit 1
+  fi
+done

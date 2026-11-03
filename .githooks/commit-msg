@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# 커밋 메시지 첫 줄을 검사한다. 규칙은 README의 "커밋 메시지 규칙" 참고.
+
+subject=$(head -n 1 "$1")
+
+# git이 자동으로 만드는 메시지는 검사하지 않는다.
+if [[ "$subject" =~ ^(Merge|Revert|fixup!|squash!) ]]; then
+  exit 0
+fi
+
+pattern='^(feat|fix|refactor|test|docs|chore|build|ci)(\([a-z0-9-]+\))?: [^ ].*[^.]$'
+if [[ ! "$subject" =~ $pattern ]]; then
+  echo "커밋 메시지 형식이 올바르지 않습니다: $subject" >&2
+  echo "형식: <type>(<scope>): <제목>  (scope 생략 가능, 제목 끝 마침표 금지)" >&2
+  echo "type: feat, fix, refactor, test, docs, chore, build, ci" >&2
+  echo "예시: feat(card): 보유 카드 등록 API 추가" >&2
+  exit 1
+fi
