@@ -90,6 +90,8 @@ Testcontainers가 임시 PostgreSQL을 띄우므로 Docker가 실행 중이어�
 ./gradlew test
 ```
 
+`main`으로 PR을 올리거나 `main`에 머지하면 GitHub Actions가 같은 테스트를 실행합니다.
+
 ## 브랜치 규칙
 
 `main`을 기준으로 작업 브랜치를 만들고, PR로 머지합니다.
