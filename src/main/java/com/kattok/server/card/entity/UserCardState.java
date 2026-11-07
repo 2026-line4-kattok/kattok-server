@@ -37,18 +37,10 @@ public class UserCardState {
 	@Column(name = "period_month", nullable = false)
 	private YearMonth periodMonth;
 
-	/** 확인된 실적 구간. NULL = 미확인 */
+	/** 확인된 실적 구간. NULL = 미확인. 잔여 한도는 한도 그룹마다 다를 수 있어 {@link UserCardCapUsage}로 분리한다. */
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "performance_tier_id")
 	private CardPerformanceTier performanceTier;
-
-	/** 잔여 한도(원). NULL = 미확인 (0과 구분) */
-	@Column(name = "remaining_limit_amount")
-	private Long remainingLimitAmount;
-
-	/** 잔여 횟수. NULL = 미확인 (0과 구분) */
-	@Column(name = "remaining_count")
-	private Integer remainingCount;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
@@ -65,15 +57,11 @@ public class UserCardState {
 			UserCard userCard,
 			YearMonth periodMonth,
 			CardPerformanceTier performanceTier,
-			Long remainingLimitAmount,
-			Integer remainingCount,
 			ConfirmationSource source,
 			Instant confirmedAt) {
 		this.userCard = userCard;
 		this.periodMonth = periodMonth;
 		this.performanceTier = performanceTier;
-		this.remainingLimitAmount = remainingLimitAmount;
-		this.remainingCount = remainingCount;
 		this.source = source;
 		this.confirmedAt = confirmedAt;
 	}
