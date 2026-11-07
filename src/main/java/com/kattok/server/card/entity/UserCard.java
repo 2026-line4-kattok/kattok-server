@@ -19,6 +19,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** DB에 (user_id, product_id) 부분 유니크 인덱스(deleted_at is null)가 있어, 삭제되지 않은 카드끼리만 중복 등록을 막는다. */
 @Entity
 @Table(name = "user_cards")
 @Getter
