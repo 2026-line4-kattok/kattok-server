@@ -50,9 +50,11 @@ begin
 
 	insert into merchants (name, channel, category_id)
 		values ('쿠팡', 'ONLINE', v_category_shopping_id)
+		on conflict (name, channel) do update set category_id = excluded.category_id
 		returning id into v_merchant_coupang_id;
 	insert into merchants (name, channel, category_id)
 		values ('스타벅스', 'OFFLINE', v_category_cafe_id)
+		on conflict (name, channel) do update set category_id = excluded.category_id
 		returning id into v_merchant_starbucks_id;
 
 	-- 기본 혜택 10%: 온라인몰·마트·백화점 등 화이트리스트 중 쿠팡만 대표로 시딩
