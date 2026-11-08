@@ -23,6 +23,7 @@ declare
 begin
 	insert into card_issuers (name, code)
 		values ('현대카드', 'HYUNDAI')
+		on conflict (code) do update set name = excluded.name
 		returning id into v_issuer_id;
 
 	insert into card_products (issuer_id, name, card_type, product_version, data_status, annual_fee)
@@ -48,13 +49,14 @@ begin
 		on conflict (code) do update set name = excluded.name
 		returning id into v_category_cafe_id;
 
+	-- category_id는 기존 값을 유지한다(다른 카드 시드가 같은 결제처를 다른 업종으로 덮어쓰지 않게).
 	insert into merchants (name, channel, category_id)
 		values ('쿠팡', 'ONLINE', v_category_shopping_id)
-		on conflict (name, channel) do update set category_id = excluded.category_id
+		on conflict (name, channel) do update set name = excluded.name
 		returning id into v_merchant_coupang_id;
 	insert into merchants (name, channel, category_id)
 		values ('스타벅스', 'OFFLINE', v_category_cafe_id)
-		on conflict (name, channel) do update set category_id = excluded.category_id
+		on conflict (name, channel) do update set name = excluded.name
 		returning id into v_merchant_starbucks_id;
 
 	-- 기본 혜택 10%: 온라인몰·마트·백화점 등 화이트리스트 중 쿠팡만 대표로 시딩
@@ -73,13 +75,13 @@ begin
 		min_payment_amount, conditions, source_ref, verification_status, verified_at, rule_version, valid_from
 	) values
 		(v_product_id, v_merchant_coupang_id, v_tier1_id, v_cap_basic_t1_id, 'DISCOUNT_RATE', 0.10,
-			400000, '{"channel":"ONLINE","installmentExcluded":true}'::jsonb,
+			null, '{"channel":"ONLINE","installmentExcluded":true}'::jsonb,
 			'알파벳카드S 상품 가이드북 p.2 기본혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
 		(v_product_id, v_merchant_coupang_id, v_tier2_id, v_cap_basic_t2_id, 'DISCOUNT_RATE', 0.10,
-			400000, '{"channel":"ONLINE","installmentExcluded":true}'::jsonb,
+			null, '{"channel":"ONLINE","installmentExcluded":true}'::jsonb,
 			'알파벳카드S 상품 가이드북 p.2 기본혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
 		(v_product_id, v_merchant_coupang_id, v_tier3_id, v_cap_basic_t3_id, 'DISCOUNT_RATE', 0.10,
-			400000, '{"channel":"ONLINE","installmentExcluded":true}'::jsonb,
+			null, '{"channel":"ONLINE","installmentExcluded":true}'::jsonb,
 			'알파벳카드S 상품 가이드북 p.2 기본혜택', 'VERIFIED', now(), 1, date '2025-09-08');
 
 	-- 추가 혜택 5%: 커피전문점·편의점·대중교통 중 스타벅스만 대표로 시딩
@@ -98,12 +100,12 @@ begin
 		min_payment_amount, conditions, source_ref, verification_status, verified_at, rule_version, valid_from
 	) values
 		(v_product_id, v_merchant_starbucks_id, v_tier1_id, v_cap_extra_t1_id, 'DISCOUNT_RATE', 0.05,
-			400000, '{"channel":"OFFLINE"}'::jsonb,
+			null, '{"channel":"OFFLINE"}'::jsonb,
 			'알파벳카드S 상품 가이드북 p.3 추가혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
 		(v_product_id, v_merchant_starbucks_id, v_tier2_id, v_cap_extra_t2_id, 'DISCOUNT_RATE', 0.05,
-			400000, '{"channel":"OFFLINE"}'::jsonb,
+			null, '{"channel":"OFFLINE"}'::jsonb,
 			'알파벳카드S 상품 가이드북 p.3 추가혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
 		(v_product_id, v_merchant_starbucks_id, v_tier3_id, v_cap_extra_t3_id, 'DISCOUNT_RATE', 0.05,
-			400000, '{"channel":"OFFLINE"}'::jsonb,
+			null, '{"channel":"OFFLINE"}'::jsonb,
 			'알파벳카드S 상품 가이드북 p.3 추가혜택', 'VERIFIED', now(), 1, date '2025-09-08');
 end $$;
