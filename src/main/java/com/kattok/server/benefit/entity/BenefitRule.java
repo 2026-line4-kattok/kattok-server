@@ -52,7 +52,12 @@ public class BenefitRule {
 	@JoinColumn(name = "merchant_id")
 	private Merchant merchant;
 
-	/** 요구 실적 구간. NULL이면 실적 조건 없음 */
+	/**
+	 * 이 규칙이 적용되는 실적 구간. NULL이면 실적 조건 없음.
+	 * "이 구간 이상이면 적용"이 아니라 "정확히 이 구간일 때 적용"이다 — 구간별로 혜택률·한도가 다른 카드는
+	 * 구간마다 별도의 BenefitRule 행을 만든다(예: 알파벳카드S). 계산 엔진에서 ">="로 비교하면
+	 * 여러 구간의 혜택이 중복 적용되는 버그가 생기니 "=="로 일치하는 구간만 적용해야 한다.
+	 */
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "required_tier_id")
 	private CardPerformanceTier requiredTier;
@@ -83,6 +88,11 @@ public class BenefitRule {
 	@Column(name = "select_option")
 	private String selectOption;
 
+	/**
+	 * 결제 건당 최소 결제금액(원). 약관에 건당 최소금액이 없으면 NULL.
+	 * 전월 실적 조건(requiredTier)과는 다른 값이니 섞어 쓰지 않는다 — 여기에 실적 기준 금액을
+	 * 넣으면 그 미만 결제는 전부 혜택 0원으로 계산돼버린다.
+	 */
 	@Column(name = "min_payment_amount")
 	private Long minPaymentAmount;
 
