@@ -45,14 +45,30 @@ public class BenefitCapGroup {
 	@Column(name = "cap_count")
 	private Integer capCount;
 
+	/**
+	 * 이 한도를 포함하는 상위 한도(있으면). 예: 알파벳카드S의 "커피전문점 월 5천원"(이 한도)이
+	 * "커피전문점+편의점+대중교통 통합 월 1만원"(상위 한도) 안에 포함되는 경우.
+	 * 계산 엔진은 이 한도가 남아있는지 확인한 뒤, parent가 있으면 그것도 남아있는지 재귀적으로 확인해야 한다.
+	 */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "parent_cap_group_id")
+	private BenefitCapGroup parent;
+
 	/** 예: "장보기쇼핑+딜리버리+대중교통 통합 한도" */
 	private String description;
 
-	public BenefitCapGroup(CardProduct product, CapPeriod capPeriod, Long capAmount, Integer capCount, String description) {
+	public BenefitCapGroup(
+			CardProduct product,
+			CapPeriod capPeriod,
+			Long capAmount,
+			Integer capCount,
+			BenefitCapGroup parent,
+			String description) {
 		this.product = product;
 		this.capPeriod = capPeriod;
 		this.capAmount = capAmount;
 		this.capCount = capCount;
+		this.parent = parent;
 		this.description = description;
 	}
 }
