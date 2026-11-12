@@ -90,6 +90,10 @@ public class BenefitRule {
 	@Column(name = "max_eligible_txn_amount")
 	private Long maxEligibleTxnAmount;
 
+	/** 화면에 보여줄 혜택 문구. 계산 조건이 아니라 표시용이라 별도 컬럼으로 둔다 */
+	@Column(name = "display_text")
+	private String displayText;
+
 	/** 제외 업종·채널·결제수단 등. 최소 키: channel, requireAppRegistration, excludedSubmerchants, timeRange, daysOfWeek, installmentExcluded */
 	@JdbcTypeCode(SqlTypes.JSON)
 	private Map<String, Object> conditions;
@@ -128,6 +132,7 @@ public class BenefitRule {
 			String selectOption,
 			Long minPaymentAmount,
 			Long maxEligibleTxnAmount,
+			String displayText,
 			Map<String, Object> conditions,
 			String sourceRef,
 			VerificationStatus verificationStatus,
@@ -148,6 +153,7 @@ public class BenefitRule {
 		this.selectOption = selectOption;
 		this.minPaymentAmount = minPaymentAmount;
 		this.maxEligibleTxnAmount = maxEligibleTxnAmount;
+		this.displayText = displayText;
 		this.conditions = conditions;
 		this.sourceRef = sourceRef;
 		this.verificationStatus = verificationStatus;
