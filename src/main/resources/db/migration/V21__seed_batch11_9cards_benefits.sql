@@ -1,13 +1,18 @@
 -- 11차 배치: 현대카드 체크(캐시백형)(CK081), 가온 올포인트 체크카드(CK082), 카카오페이 체크카드(CK087),
 -- 위비트래블 J 체크카드(CK088), 신한카드 On 체크(CK090), 신한카드 SOL글로벌 체크(CK091),
--- 노리2 체크카드(Play)(CK094), 쉬즈온 신한카드 주거래 체크(CK095), MULTI Any 체크카드(CK098),
--- 알파벳카드S(CR006) 총 10장의 혜택 데이터를 적재한다. 이로써 125장 지원 카드 혜택 데이터 적재가 완료된다.
+-- 노리2 체크카드(Play)(CK094), 쉬즈온 신한카드 주거래 체크(CK095), MULTI Any 체크카드(CK098)
+-- 총 9장의 혜택 데이터를 적재한다. 이로써 125장 지원 카드 혜택 데이터 적재가 완료된다.
 -- 체크카드는 여신금융협회 심의필 대신 각 카드사 준법감시인/준법심의 코드를 product_version에 기록한다.
 --
--- CR006(알파벳카드S)은 V2__seed_card_alphabet_s.sql에서 product_key 없이(초기 데모 시딩, product_key
--- 컬럼 도입 이전) 별도 row로 이미 적재되어 있다. V5에서 만들어진 product_key='CR006' row는 지금까지
--- UNVERIFIED 상태였으므로, 이 배치에서 V2와 동일한 소스(알파벳카드S 상품 가이드북)를 product_key 기준으로
--- 다시 적재한다. V2가 만든 중복 row(product_key IS NULL인 '알파벳카드S')의 정리는 이 배치의 범위 밖이다.
+-- CR006(알파벳카드S)은 애초에 "데이터 없는 카드"가 아니었다 — V2__seed_card_alphabet_s.sql이
+-- product_key 컬럼 도입 전에 만든 row를, V4__card_product_metadata_fields.sql이
+-- `update card_products set product_key = 'CR006' where name = '알파벳카드S' and product_key is null`로
+-- 이미 역채움해뒀고 그 직후 product_key에 unique 제약을 걸었다. 그래서 V5의 insert는
+-- `on conflict (product_key) do update set name = ...`로 병합됐을 뿐 새 row를 만들지 않았다.
+-- 즉 CR006은 처음부터 V2의 혜택 데이터(기본혜택 10%+추가혜택 5%, merchant_id 기준)를 그대로 갖고 있었다.
+-- 이번 배치 초안에서 CR006에 동일 소스를 category_id 기준으로 다시 적재하려 했는데, 그대로 두면
+-- 같은 product_id에 benefit_rules가 중복으로 쌓여 같은 거래가 두 규칙에 동시에 매칭될 수 있었다.
+-- 그 블록은 이번 파일에서 뺐다(이미 반영된 혜택을 다시 적재할 필요가 없음).
 
 update card_products set annual_fee = 5000, product_version = '260625-001', data_status = 'CALCULABLE' where product_key = 'CK081';
 update card_products set annual_fee = 0, product_version = '260522-01722-PIF', data_status = 'CALCULABLE' where product_key = 'CK082';
@@ -18,7 +23,6 @@ update card_products set annual_fee = 0, product_version = '20260709-Dpp-001', d
 update card_products set annual_fee = 0, product_version = '260522-01722-PIF', data_status = 'CALCULABLE' where product_key = 'CK094';
 update card_products set annual_fee = 0, product_version = '20261021-Dpp-001', data_status = 'CALCULABLE' where product_key = 'CK095';
 update card_products set annual_fee = 0, product_version = 'L-26-0410', data_status = 'CALCULABLE' where product_key = 'CK098';
-update card_products set annual_fee = 15000, product_version = '2025-C1a-13175', data_status = 'CALCULABLE' where product_key = 'CR006';
 
 -- 현대카드 체크(캐시백형)(CK081): 기본혜택 0.3%(전가맹점) + 추가혜택 3%(일반음식점/편의점)만 반영.
 -- 배달앱/대중교통은 업종 밖이라 제외. 추가혜택 한도 초과 시 기본혜택으로 대체되므로 기본혜택에
@@ -254,37 +258,4 @@ begin
 	values
 		(v_product_id, v_cat_mart, v_cap_shopping, 'POINT_RATE', 0.006, 1.0, 'SSM/대형마트(GS슈퍼/롯데슈퍼/이마트에브리데이/이마트/홈플러스/롯데마트) 0.6% 하나머니 적립(쇼핑)', 'MULTI Any 모바일 체크카드 하나머니 적립 서비스 안내', 'VERIFIED', now(), 1, current_date),
 		(v_product_id, v_cat_department, v_cap_shopping, 'POINT_RATE', 0.006, 1.0, '백화점(신세계/현대/롯데백화점) 0.6% 하나머니 적립(쇼핑)', 'MULTI Any 모바일 체크카드 하나머니 적립 서비스 안내', 'VERIFIED', now(), 1, current_date);
-end $$;
-
--- 알파벳카드S(CR006, 현대): V2에서 product_key 없이 먼저 적재된 것과 같은 소스(상품 가이드북,
--- 여신금융협회 심의필 2025-C1a-13175)를 이번에는 product_key='CR006' row 기준으로 적재한다.
--- 기본혜택 10%(온라인쇼핑 대표: 쿠팡) + 추가혜택 5%(커피 대표: 스타벅스)만 반영(화이트리스트 중
--- 대표 가맹점만 시딩, "영역별 고정한도+통합한도" 이중한도는 통합한도만 반영).
-do $$
-declare
-	v_product_id bigint; v_t1 bigint; v_t2 bigint; v_t3 bigint;
-	v_cat_online bigint; v_cat_cafe bigint;
-	v_cap_basic_t1 bigint; v_cap_basic_t2 bigint; v_cap_basic_t3 bigint;
-	v_cap_extra_t1 bigint; v_cap_extra_t2 bigint; v_cap_extra_t3 bigint;
-begin
-	select id into v_product_id from card_products where product_key = 'CR006';
-	select id into v_cat_online from merchant_categories where code = 'ONLINE_SHOPPING';
-	select id into v_cat_cafe from merchant_categories where code = 'CAFE';
-	insert into card_performance_tiers (product_id, level, min_amount, label) values (v_product_id, 1, 400000, '40만원 이상') returning id into v_t1;
-	insert into card_performance_tiers (product_id, level, min_amount, label) values (v_product_id, 2, 800000, '80만원 이상') returning id into v_t2;
-	insert into card_performance_tiers (product_id, level, min_amount, label) values (v_product_id, 3, 1200000, '120만원 이상') returning id into v_t3;
-	insert into benefit_cap_groups (product_id, cap_period, cap_amount, description) values (v_product_id, 'MONTHLY', 10000, '기본혜택 통합 한도(40만원대 구간)') returning id into v_cap_basic_t1;
-	insert into benefit_cap_groups (product_id, cap_period, cap_amount, description) values (v_product_id, 'MONTHLY', 20000, '기본혜택 통합 한도(80만원대 구간)') returning id into v_cap_basic_t2;
-	insert into benefit_cap_groups (product_id, cap_period, cap_amount, description) values (v_product_id, 'MONTHLY', 35000, '기본혜택 통합 한도(120만원 이상 구간)') returning id into v_cap_basic_t3;
-	insert into benefit_cap_groups (product_id, cap_period, cap_amount, description) values (v_product_id, 'MONTHLY', 5000, '추가혜택 통합 한도(40만원대 구간)') returning id into v_cap_extra_t1;
-	insert into benefit_cap_groups (product_id, cap_period, cap_amount, description) values (v_product_id, 'MONTHLY', 10000, '추가혜택 통합 한도(80만원대 구간)') returning id into v_cap_extra_t2;
-	insert into benefit_cap_groups (product_id, cap_period, cap_amount, description) values (v_product_id, 'MONTHLY', 15000, '추가혜택 통합 한도(120만원 이상 구간)') returning id into v_cap_extra_t3;
-	insert into benefit_rules (product_id, category_id, required_tier_id, cap_group_id, benefit_type, rate, conditions, display_text, source_ref, verification_status, verified_at, rule_version, valid_from)
-	values
-		(v_product_id, v_cat_online, v_t1, v_cap_basic_t1, 'DISCOUNT_RATE', 0.10, jsonb_build_object('channel', 'ONLINE', 'installmentExcluded', true), '온라인쇼핑(쿠팡 등) 10% 기본혜택', '알파벳카드S 상품 가이드북 p.2 기본혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
-		(v_product_id, v_cat_online, v_t2, v_cap_basic_t2, 'DISCOUNT_RATE', 0.10, jsonb_build_object('channel', 'ONLINE', 'installmentExcluded', true), '온라인쇼핑(쿠팡 등) 10% 기본혜택', '알파벳카드S 상품 가이드북 p.2 기본혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
-		(v_product_id, v_cat_online, v_t3, v_cap_basic_t3, 'DISCOUNT_RATE', 0.10, jsonb_build_object('channel', 'ONLINE', 'installmentExcluded', true), '온라인쇼핑(쿠팡 등) 10% 기본혜택', '알파벳카드S 상품 가이드북 p.2 기본혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
-		(v_product_id, v_cat_cafe, v_t1, v_cap_extra_t1, 'DISCOUNT_RATE', 0.05, jsonb_build_object('channel', 'OFFLINE'), '커피전문점(스타벅스 등) 5% 추가혜택', '알파벳카드S 상품 가이드북 p.3 추가혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
-		(v_product_id, v_cat_cafe, v_t2, v_cap_extra_t2, 'DISCOUNT_RATE', 0.05, jsonb_build_object('channel', 'OFFLINE'), '커피전문점(스타벅스 등) 5% 추가혜택', '알파벳카드S 상품 가이드북 p.3 추가혜택', 'VERIFIED', now(), 1, date '2025-09-08'),
-		(v_product_id, v_cat_cafe, v_t3, v_cap_extra_t3, 'DISCOUNT_RATE', 0.05, jsonb_build_object('channel', 'OFFLINE'), '커피전문점(스타벅스 등) 5% 추가혜택', '알파벳카드S 상품 가이드북 p.3 추가혜택', 'VERIFIED', now(), 1, date '2025-09-08');
 end $$;
