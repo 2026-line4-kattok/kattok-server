@@ -3,7 +3,9 @@ package com.kattok.server.card.entity;
 import java.time.Instant;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,15 +36,23 @@ public class CardProduct {
 	@JoinColumn(name = "issuer_id", nullable = false)
 	private CardIssuer issuer;
 
+	/** 카드 데이터 소스 식별자 (예: CR001, CK012, CT04). 카드 등록 검색·동률 처리에 쓴다. */
+	@Column(name = "product_key", nullable = false, unique = true)
+	private String productKey;
+
 	@Column(nullable = false)
 	private String name;
+
+	/** 예전 이름·별칭 (예: 토스뱅크 체크카드 → 토스카드). 없으면 NULL */
+	@JdbcTypeCode(SqlTypes.ARRAY)
+	private String[] aliases;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "card_type", nullable = false)
 	private CardType cardType;
 
-	/** 여신금융협회 심의필 문서번호 (예: A-20100826-9227-00149-07). 파일명·다운로드일이 아니다. */
-	@Column(name = "product_version", nullable = false)
+	/** 여신금융협회 심의필 문서번호 (예: A-20100826-9227-00149-07). 파일명·다운로드일이 아니다. 아직 확인 못했으면 NULL */
+	@Column(name = "product_version")
 	private String productVersion;
 
 	@Enumerated(EnumType.STRING)
@@ -53,9 +63,13 @@ public class CardProduct {
 	@Column(name = "source_url")
 	private String sourceUrl;
 
-	/** 연회비(원). 해외겸용/국내전용처럼 연회비가 다른 변형은 별도 상품으로 등록한다. */
-	@Column(name = "annual_fee", nullable = false)
-	private long annualFee;
+	/** 카드 이미지 파일명 (예: CR006_현대_알파벳카드S.png). 호스팅 위치는 별도 결정 전까지 파일명만 보관 */
+	@Column(name = "image_file_name")
+	private String imageFileName;
+
+	/** 연회비(원). 해외겸용/국내전용처럼 연회비가 다른 변형은 별도 상품으로 등록한다. 아직 확인 못했으면 NULL */
+	@Column(name = "annual_fee")
+	private Long annualFee;
 
 	/** 국제 브랜드(VISA/Mastercard/AMEX 등). 국내전용이면 NULL */
 	private String brand;
@@ -70,19 +84,25 @@ public class CardProduct {
 
 	public CardProduct(
 			CardIssuer issuer,
+			String productKey,
 			String name,
+			String[] aliases,
 			CardType cardType,
 			String productVersion,
 			DataStatus dataStatus,
 			String sourceUrl,
-			long annualFee,
+			String imageFileName,
+			Long annualFee,
 			String brand) {
 		this.issuer = issuer;
+		this.productKey = productKey;
 		this.name = name;
+		this.aliases = aliases;
 		this.cardType = cardType;
 		this.productVersion = productVersion;
 		this.dataStatus = dataStatus;
 		this.sourceUrl = sourceUrl;
+		this.imageFileName = imageFileName;
 		this.annualFee = annualFee;
 		this.brand = brand;
 	}
