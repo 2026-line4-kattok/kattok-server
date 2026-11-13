@@ -71,9 +71,6 @@ public class CardProduct {
 	@Column(name = "annual_fee")
 	private Long annualFee;
 
-	/** 국제 브랜드(VISA/Mastercard/AMEX 등). 국내전용이면 NULL */
-	private String brand;
-
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -92,8 +89,7 @@ public class CardProduct {
 			DataStatus dataStatus,
 			String sourceUrl,
 			String imageFileName,
-			Long annualFee,
-			String brand) {
+			Long annualFee) {
 		this.issuer = issuer;
 		this.productKey = productKey;
 		this.name = name;
@@ -104,6 +100,5 @@ public class CardProduct {
 		this.sourceUrl = sourceUrl;
 		this.imageFileName = imageFileName;
 		this.annualFee = annualFee;
-		this.brand = brand;
 	}
 }
