@@ -58,13 +58,18 @@ public class ProductRulesReader {
 			List<BenefitCapGroup> caps = capsByProduct.getOrDefault(product.getId(), List.of());
 			result.put(product.getId(), new ProductRules(
 					product.getId(),
-					product.getDataStatus() == DataStatus.CALCULABLE,
+					isCalculable(product.getDataStatus()),
 					product.getAnnualFee(),
 					rules.stream().map(ProductRulesReader::toRule).toList(),
 					tiersOf(rules),
 					caps.stream().collect(Collectors.toMap(BenefitCapGroup::getId, ProductRulesReader::toCap))));
 		}
 		return result;
+	}
+
+	/** 일부 혜택만 검증된(PARTIAL) 카드도 검증된 규칙으로 비교한다. 혜택 미검증(UNVERIFIED) 카드만 비교에서 뺀다. */
+	private static boolean isCalculable(DataStatus status) {
+		return status == DataStatus.CALCULABLE || status == DataStatus.PARTIAL;
 	}
 
 	private static Rule toRule(BenefitRule rule) {
