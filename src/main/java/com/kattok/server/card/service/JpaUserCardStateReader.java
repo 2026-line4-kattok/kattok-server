@@ -63,15 +63,15 @@ public class JpaUserCardStateReader implements UserCardStateReader {
 		return snapshots;
 	}
 
-	/**
-	 * 실적을 확인한 적이 없거나(row 없음), 확인했지만 모른다고 한 경우(performanceTier가 {@code null})
-	 * 모두 {@link PerformanceState#unknown()}으로 본다. 현재 카드 등록·상태 수정 API에는 "확인했지만
-	 * 최저 구간도 못 채웠다"를 명시적으로 표현하는 방법이 없어 {@code BELOW}는 아직 쓰이지 않는다.
-	 */
+	/** 실적을 확인한 적이 없으면(row 없음) UNKNOWN, 있으면 저장된 performance_status를 그대로 따른다. */
 	private static PerformanceState toPerformanceState(UserCardState state) {
-		if (state == null || state.getPerformanceTier() == null) {
+		if (state == null) {
 			return PerformanceState.unknown();
 		}
-		return PerformanceState.confirmed(state.getPerformanceTier().getId());
+		return switch (state.getPerformanceStatus()) {
+			case CONFIRMED -> PerformanceState.confirmed(state.getPerformanceTier().getId());
+			case BELOW -> PerformanceState.below();
+			case UNKNOWN -> PerformanceState.unknown();
+		};
 	}
 }

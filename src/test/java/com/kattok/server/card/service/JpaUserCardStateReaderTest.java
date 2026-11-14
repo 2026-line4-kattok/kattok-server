@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.TestcontainersConfiguration;
 import com.kattok.server.card.dto.OwnedCardResponse;
+import com.kattok.server.card.dto.PerformanceInput;
 import com.kattok.server.card.dto.PerformanceStatus;
 import com.kattok.server.card.dto.RegisterCardRequest;
 import com.kattok.server.card.dto.UpdateCardStateRequest;
@@ -81,13 +82,14 @@ class JpaUserCardStateReaderTest {
 		OwnedCardResponse registered = ownedCardService.register(new RegisterCardRequest(productId, null));
 		Long tierId = convenienceTierId(productId);
 
-		userCardStateService.updateState(registered.id(), new UpdateCardStateRequest(MONTH, tierId, null));
+		userCardStateService.updateState(registered.id(),
+				new UpdateCardStateRequest(MONTH, new PerformanceInput(PerformanceStatus.CONFIRMED, tierId), null));
 		UserCardStateResponse state = userCardStateService.getState(registered.id(), MONTH);
 		Long capGroupId = state.caps().get(0).capGroupId();
 		userCardStateService.updateState(
 				registered.id(),
 				new UpdateCardStateRequest(
-						MONTH, tierId,
+						MONTH, new PerformanceInput(PerformanceStatus.CONFIRMED, tierId),
 						List.of(new UpdateCardStateRequest.CapUpdate(capGroupId, 1000L, null))));
 
 		UserCardSnapshot snapshot = reader.findForRecommendation(userId, MONTH).get(0);
@@ -96,6 +98,21 @@ class JpaUserCardStateReaderTest {
 		assertThat(snapshot.performance().tierId()).isEqualTo(tierId);
 		assertThat(snapshot.caps()).containsKey(capGroupId);
 		assertThat(snapshot.caps().get(capGroupId).remainingAmount()).isEqualTo(1000L);
+	}
+
+	@Test
+	@DisplayName("실적을 확인했지만 최저 구간도 못 채웠으면 BELOW로 반영된다")
+	void belowState() {
+		Long userId = demoUserId();
+		OwnedCardResponse registered = ownedCardService.register(new RegisterCardRequest(starPlusProductId(), null));
+
+		userCardStateService.updateState(registered.id(),
+				new UpdateCardStateRequest(MONTH, new PerformanceInput(PerformanceStatus.BELOW, null), null));
+
+		UserCardSnapshot snapshot = reader.findForRecommendation(userId, MONTH).get(0);
+
+		assertThat(snapshot.performance().status()).isEqualTo(PerformanceStatus.BELOW);
+		assertThat(snapshot.performance().tierId()).isNull();
 	}
 
 	@Test
