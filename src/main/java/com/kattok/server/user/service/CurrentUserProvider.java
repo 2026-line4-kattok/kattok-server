@@ -9,8 +9,9 @@ import com.kattok.server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 로그인 없이 데모 계정 하나로 운영하기로 한 팀 결정(2026-11)에 따라, 모든 요청을 이 계정의 것으로 취급한다.
- * 실제 로그인이 생기면 이 클래스를 인증된 사용자를 돌려주는 구현으로 교체한다.
+ * 로그인 구현 전까지 임시로 테스트 계정을 현재 사용자로 사용한다. 회원가입·로그인은 정상적으로
+ * 만들고, 시연 때는 미리 만들어 둔 이 테스트 계정으로 실제 로그인한다(2026-11 회의 결정).
+ * 로그인이 붙으면 이 클래스를 인증된 사용자를 돌려주는 구현으로 교체한다.
  */
 @Service
 @RequiredArgsConstructor
