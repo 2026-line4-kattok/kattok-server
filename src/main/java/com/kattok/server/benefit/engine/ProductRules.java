@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.kattok.server.benefit.entity.BenefitType;
+import com.kattok.server.benefit.entity.CapPeriod;
 
 /**
  * 카드 상품 한 장의 계산용 정보. 사용자와 상관없는 데이터라 사용자 카드 상태와 따로 읽는다.
@@ -65,8 +66,15 @@ public record ProductRules(
 	 * 한도 그룹. 금액 한도와 횟수 한도가 모두 없으면 한도가 없는 그룹이다.
 	 *
 	 * @param parentId 이 한도를 포함하는 상위 한도 그룹 id. 없으면 {@code null}
+	 * @param description 화면에 보여줄 한도 설명 (카드 상태 조회 API에서 쓴다. 계산 엔진은 읽지 않는다)
+	 * @param capPeriod 한도 갱신 주기 (카드 상태 조회 API에서 쓴다. 계산 엔진은 읽지 않는다)
 	 */
-	public record Cap(Long id, Long capAmount, Integer capCount, Long parentId) {
+	public record Cap(Long id, Long capAmount, Integer capCount, Long parentId, String description, CapPeriod capPeriod) {
+
+		/** 화면 표시용 필드 없이 쓰던 기존 호출부(계산 엔진 테스트 등)를 위한 생성자. */
+		public Cap(Long id, Long capAmount, Integer capCount, Long parentId) {
+			this(id, capAmount, capCount, parentId, null, null);
+		}
 
 		boolean limitsAmount() {
 			return capAmount != null;

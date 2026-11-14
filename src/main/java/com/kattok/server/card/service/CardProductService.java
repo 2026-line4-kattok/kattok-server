@@ -1,6 +1,7 @@
 package com.kattok.server.card.service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +33,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class CardProductService {
 
+	private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
 	private final CardProductRepository cardProductRepository;
 	private final CardPerformanceTierRepository cardPerformanceTierRepository;
 	private final UserCardRepository userCardRepository;
@@ -55,7 +58,7 @@ public class CardProductService {
 				.orElseThrow(() -> ApiException.notFound("CARD_PRODUCT_NOT_FOUND", "존재하지 않는 상품입니다."));
 
 		List<CardPerformanceTier> tiers = cardPerformanceTierRepository.findByProductIdOrderByLevelAsc(productId);
-		ProductRules rules = productRulesReader.read(Set.of(productId), LocalDate.now()).get(productId);
+		ProductRules rules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
 		List<Rule> allRules = rules == null ? List.of() : rules.rules();
 		Map<Long, Cap> caps = rules == null ? Map.of() : rules.caps();
 
