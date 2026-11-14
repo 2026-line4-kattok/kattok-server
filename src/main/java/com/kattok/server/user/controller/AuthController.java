@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kattok.server.user.dto.AuthResponse;
+import com.kattok.server.user.dto.LoginRequest;
 import com.kattok.server.user.dto.SignupRequest;
 import com.kattok.server.user.service.AuthService;
 
@@ -25,5 +26,10 @@ public class AuthController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public AuthResponse signup(@Valid @RequestBody SignupRequest request) {
 		return authService.signup(request);
+	}
+
+	@PostMapping("/login")
+	public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+		return authService.login(request);
 	}
 }
