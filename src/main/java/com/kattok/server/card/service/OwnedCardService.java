@@ -41,6 +41,11 @@ public class OwnedCardService {
 	private final CardPerformanceTierRepository cardPerformanceTierRepository;
 	private final CurrentUserProvider currentUserProvider;
 
+	/** 추천 등 다른 도메인에서 보유 카드를 참조할 때 쓴다. 삭제한 카드는 빠지고, 등록 순서대로 준다. */
+	public List<UserCard> findActiveCards(Long userId) {
+		return userCardRepository.findByUserIdAndDeletedAtIsNullOrderByCreatedAtAsc(userId);
+	}
+
 	public List<OwnedCardResponse> findAll() {
 		Long userId = currentUserProvider.get().getId();
 		List<UserCard> userCards = userCardRepository.findByUserIdAndDeletedAtIsNullOrderByCreatedAtAsc(userId);
