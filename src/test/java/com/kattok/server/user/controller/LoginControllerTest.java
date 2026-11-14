@@ -80,6 +80,15 @@ class LoginControllerTest {
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 	}
 
+	@Test
+	@DisplayName("비밀번호가 64자를 넘으면 400 INVALID_INPUT")
+	void tooLongPassword() throws Exception {
+		login(email, "a".repeat(65))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+				.andExpect(jsonPath("$.fieldErrors[0].field").value("password"));
+	}
+
 	private ResultActions login(String email, String password) throws Exception {
 		String body = """
 				{"email": "%s", "password": "%s"}
