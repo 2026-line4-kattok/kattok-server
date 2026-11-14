@@ -17,5 +17,8 @@ public interface UserCardRepository extends JpaRepository<UserCard, Long> {
 
 	List<UserCard> findByUserIdAndDeletedAtIsNullOrderByCreatedAtAsc(Long userId);
 
+	/** 마지막 카드 삭제를 막기 위한 보유 카드 수 확인(F-04-04). 온보딩에서 최소 1장을 등록해야 홈에 들어갈 수 있다. */
+	long countByUserIdAndDeletedAtIsNull(Long userId);
+
 	Optional<UserCard> findByIdAndUserId(Long id, Long userId);
 }
