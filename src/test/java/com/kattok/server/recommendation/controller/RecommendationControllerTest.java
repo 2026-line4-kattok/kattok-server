@@ -1,5 +1,6 @@
 package com.kattok.server.recommendation.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -34,6 +35,9 @@ import com.kattok.server.card.repository.CardProductRepository;
 import com.kattok.server.card.repository.UserCardRepository;
 import com.kattok.server.merchant.entity.Merchant;
 import com.kattok.server.merchant.repository.MerchantRepository;
+import com.kattok.server.payment.entity.PaymentRecord;
+import com.kattok.server.payment.entity.PaymentRecordStatus;
+import com.kattok.server.payment.repository.PaymentRecordRepository;
 import com.kattok.server.recommendation.entity.OverallStatus;
 import com.kattok.server.recommendation.entity.Recommendation;
 import com.kattok.server.recommendation.repository.RecommendationRepository;
@@ -63,6 +67,9 @@ class RecommendationControllerTest {
 
 	@Autowired
 	private RecommendationRepository recommendationRepository;
+
+	@Autowired
+	private PaymentRecordRepository paymentRecordRepository;
 
 	@Autowired
 	private EntityManager entityManager;
@@ -225,6 +232,48 @@ class RecommendationControllerTest {
 				other, starbucks, starbucks.getCategory(), 5000, Map.of(), OverallStatus.NO_BENEFIT, null));
 		mockMvc.perform(get("/api/v1/recommendations/{id}", othersRecommendation.getId()))
 				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	@DisplayName("결제할게요를 여러 번 눌러도 결제 확인 대기 기록은 1건이다")
+	void confirm_createsOnePendingRecord() throws Exception {
+		register("굿데이");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id)).andExpect(status().isNoContent());
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id)).andExpect(status().isNoContent());
+
+		PaymentRecord record = paymentRecordRepository.findByRecommendationId(id).orElseThrow();
+		assertThat(record.getStatus()).isEqualTo(PaymentRecordStatus.PENDING);
+		assertThat(paymentRecordRepository.findAll().stream()
+				.filter(r -> r.getRecommendation().getId().equals(id))).hasSize(1);
+		assertThat(recommendationRepository.findById(id).orElseThrow().getSavedAt()).isNotNull();
+	}
+
+	@Test
+	@DisplayName("추천 카드가 없는 결과(NO_BENEFIT)는 409 NO_RECOMMENDED_CARD이고 기록을 만들지 않는다")
+	void confirm_noRecommendedCard() throws Exception {
+		register("알파벳카드S");
+		Merchant gs25 = merchantRepository.findByNameContainingIgnoreCaseOrderByName("GS25").getFirst();
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(gs25.getId()));
+
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("NO_RECOMMENDED_CARD"));
+		assertThat(paymentRecordRepository.findByRecommendationId(id)).isEmpty();
+	}
+
+	@Test
+	@DisplayName("없는 추천에 결제 확인을 만들면 404다")
+	void confirm_notFound() throws Exception {
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", 999999))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+	}
+
+	private long createdId(String body) throws Exception {
+		String response = create(body).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return JsonPath.<Number>read(response, "$.id").longValue();
 	}
 
 	private ResultActions create(String body) throws Exception {

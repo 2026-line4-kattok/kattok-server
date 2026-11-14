@@ -33,4 +33,10 @@ public class RecommendationController {
 	public RecommendationResponse get(@PathVariable Long id) {
 		return recommendationService.get(id);
 	}
+
+	@PostMapping("/{id}/confirm")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void confirm(@PathVariable Long id) {
+		recommendationService.confirm(id);
+	}
 }

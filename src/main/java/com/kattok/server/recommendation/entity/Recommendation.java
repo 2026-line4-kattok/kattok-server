@@ -102,6 +102,13 @@ public class Recommendation {
 
 	/** draft 상태의 추천을 "확인하고 홈으로" 시점에 확정한다. */
 	public void confirm() {
-		this.savedAt = Instant.now();
+		if (this.savedAt == null) {
+			this.savedAt = Instant.now();
+		}
+	}
+
+	/** 추천 카드가 있는 결과인지. 혜택 없음·계산 불가면 결제 확인 대기 기록을 만들지 않는다. */
+	public boolean hasRecommendedCard() {
+		return overallStatus == OverallStatus.CONFIRMED || overallStatus == OverallStatus.CONDITIONAL;
 	}
 }

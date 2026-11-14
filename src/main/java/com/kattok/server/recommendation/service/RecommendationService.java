@@ -35,6 +35,7 @@ import com.kattok.server.global.ApiException;
 import com.kattok.server.merchant.entity.Merchant;
 import com.kattok.server.merchant.entity.MerchantCategory;
 import com.kattok.server.merchant.service.MerchantService;
+import com.kattok.server.payment.service.PaymentRecordService;
 import com.kattok.server.recommendation.dto.CreateRecommendationRequest;
 import com.kattok.server.recommendation.dto.RecommendationResponse;
 import com.kattok.server.recommendation.dto.RecommendationResponse.AppliedRule;
@@ -76,6 +77,7 @@ public class RecommendationService {
 	private final ProductRulesReader productRulesReader;
 	private final RecommendationRepository recommendationRepository;
 	private final RecommendationItemRepository recommendationItemRepository;
+	private final PaymentRecordService paymentRecordService;
 	private final RecommendationResponseMapper responseMapper;
 	private final JsonMapper jsonMapper;
 
@@ -144,10 +146,29 @@ public class RecommendationService {
 				recommendation, recommendationItemRepository.findByRecommendationIdOrderByIdAsc(recommendation.getId()));
 	}
 
+	/**
+	 * [○○로 결제할게요]를 누르면 결제 확인 대기 기록을 만든다(명세 1-3). 결제 완료가 아니고, 같은 추천으로 여러 번 불러도 1건이다.
+	 */
+	@Transactional
+	public void confirm(Long recommendationId) {
+		Long userId = currentUserProvider.get().getId();
+		Recommendation recommendation = recommendationRepository.findWithLockByIdAndUserId(recommendationId, userId)
+				.orElseThrow(RecommendationService::recommendationNotFound);
+		if (!recommendation.hasRecommendedCard()) {
+			throw ApiException.conflict("NO_RECOMMENDED_CARD", "추천 카드가 없는 결과라 결제 확인을 만들 수 없습니다.");
+		}
+		recommendation.confirm();
+		paymentRecordService.createPendingIfAbsent(recommendation);
+	}
+
 	private Recommendation findOwned(Long recommendationId) {
 		Long userId = currentUserProvider.get().getId();
 		return recommendationRepository.findByIdAndUserId(recommendationId, userId)
-				.orElseThrow(() -> ApiException.notFound("RECOMMENDATION_NOT_FOUND", "존재하지 않는 추천입니다."));
+				.orElseThrow(RecommendationService::recommendationNotFound);
+	}
+
+	private static ApiException recommendationNotFound() {
+		return ApiException.notFound("RECOMMENDATION_NOT_FOUND", "존재하지 않는 추천입니다.");
 	}
 
 	/** 조건부 추천일 때만, 확인된 정보만으로 계산한 1위가 추천 카드와 다르면 그 카드. */
