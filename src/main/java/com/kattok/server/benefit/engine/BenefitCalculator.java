@@ -178,7 +178,7 @@ public class BenefitCalculator {
 	}
 
 	/** 한도를 적용하기 전 혜택. 1원 미만은 버린다. */
-	private long rawBenefit(Rule rule, long amount) {
+	static long rawBenefit(Rule rule, long amount) {
 		BigDecimal pointValue = rule.pointKrwRatio() == null ? BigDecimal.ONE : rule.pointKrwRatio();
 		BigDecimal benefit = switch (rule.type()) {
 			case DISCOUNT_RATE, POINT_RATE -> {
