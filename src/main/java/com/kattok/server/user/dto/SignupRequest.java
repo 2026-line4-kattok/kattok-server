@@ -1,5 +1,7 @@
 package com.kattok.server.user.dto;
 
+import com.kattok.server.global.validation.MaxUtf8Bytes;
+
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -14,6 +16,7 @@ public record SignupRequest(
 
 		@NotNull(message = "비밀번호를 입력해 주세요.")
 		@Size(min = 8, max = 64, message = "비밀번호는 8자 이상 64자 이하로 입력해 주세요.")
+		@MaxUtf8Bytes(value = 72, message = "비밀번호가 너무 깁니다. 한글은 24자까지 입력할 수 있어요.")
 		String password,
 
 		@NotNull(message = "약관에 동의해 주세요.")

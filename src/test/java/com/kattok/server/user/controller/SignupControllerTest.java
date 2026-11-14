@@ -79,6 +79,22 @@ class SignupControllerTest {
 	}
 
 	@Test
+	@DisplayName("비밀번호가 72바이트를 넘으면 64자 이하여도 400 INVALID_INPUT")
+	void passwordOverBcryptLimit() throws Exception {
+		signup(uniqueEmail(), "가".repeat(25), true)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+				.andExpect(jsonPath("$.fieldErrors[0].field").value("password"));
+	}
+
+	@Test
+	@DisplayName("한글 비밀번호도 72바이트 이하면 가입된다")
+	void koreanPasswordWithinLimit() throws Exception {
+		signup(uniqueEmail(), "가".repeat(24), true)
+				.andExpect(status().isCreated());
+	}
+
+	@Test
 	@DisplayName("이메일 형식이 아니면 400 INVALID_INPUT")
 	void invalidEmail() throws Exception {
 		signup("not-an-email", "password123", true)
