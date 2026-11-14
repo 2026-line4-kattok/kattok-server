@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -28,25 +29,37 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 /**
  * 인증은 {@code Authorization: Bearer <액세스 토큰>} 헤더로 한다. 서버는 세션을 만들지 않는다.
  *
- * <p>지금은 모든 경로를 열어 두고, 토큰이 있으면 검증한다. 잘못된 토큰은 401이다. 토큰이 없으면
- * {@code CurrentUserProvider}가 테스트 계정을 쓴다. 프론트엔드가 로그인을 붙이기 전까지 API 연결 테스트를
- * 막지 않기 위한 단계이며, 이후 회원가입·로그인을 뺀 경로를 인증 필수로 바꾼다.
+ * <p>회원가입·로그인을 뺀 API는 토큰이 필요하다. 잘못된 토큰은 401이다. 단, {@code kattok.auth.anonymous-demo-user}를
+ * 켜면(로컬 프로필 기본) 모든 경로를 열어 두고 토큰이 없는 요청은 {@code CurrentUserProvider}가 테스트 계정으로
+ * 처리한다. 프론트엔드가 로그인을 붙이기 전 API 연결 테스트용이다.
  */
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class})
 public class SecurityConfig {
+
+	static final String ISSUER = "kattok";
+
+	/** 토큰 없이 부를 수 있는 경로. */
+	private static final String[] PUBLIC_PATHS = {"/api/v1/auth/signup", "/api/v1/auth/login", "/actuator/health"};
 
 	/** 웹 요청 필터. 웹 서버 없이 띄우는 테스트(Repository 테스트 등)에서는 만들지 않는다. */
 	@Bean
 	@ConditionalOnWebApplication(type = Type.SERVLET)
-	public SecurityFilterChain securityFilterChain(HttpSecurity http, JsonErrorWriter jsonErrorWriter) throws Exception {
+	public SecurityFilterChain securityFilterChain(
+			HttpSecurity http, JsonErrorWriter jsonErrorWriter, AuthProperties authProperties) throws Exception {
 		return http
 				.csrf(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
 				.logout(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+				.authorizeHttpRequests(auth -> {
+					if (authProperties.anonymousDemoUser()) {
+						auth.anyRequest().permitAll();
+					} else {
+						auth.requestMatchers(PUBLIC_PATHS).permitAll().anyRequest().authenticated();
+					}
+				})
 				.oauth2ResourceServer(oauth2 -> oauth2
 						.jwt(Customizer.withDefaults())
 						.authenticationEntryPoint(jsonErrorWriter)
@@ -64,7 +77,12 @@ public class SecurityConfig {
 
 	@Bean
 	public JwtDecoder jwtDecoder(JwtProperties properties) {
-		return NimbusJwtDecoder.withSecretKey(secretKey(properties)).macAlgorithm(MacAlgorithm.HS256).build();
+		NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey(properties))
+				.macAlgorithm(MacAlgorithm.HS256)
+				.build();
+		// 만료 시각과 함께 발급자도 확인한다. 같은 키로 다른 곳에서 만든 토큰은 받지 않는다.
+		decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(ISSUER));
+		return decoder;
 	}
 
 	@Bean

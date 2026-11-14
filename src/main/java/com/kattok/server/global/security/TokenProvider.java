@@ -17,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TokenProvider {
 
-	private static final String ISSUER = "kattok";
-
 	private final JwtEncoder jwtEncoder;
 	private final JwtProperties properties;
 	private final Clock clock = Clock.systemUTC();
@@ -27,7 +25,7 @@ public class TokenProvider {
 		Instant now = clock.instant();
 		Instant expiresAt = now.plus(properties.accessTokenValidity());
 		JwtClaimsSet claims = JwtClaimsSet.builder()
-				.issuer(ISSUER)
+				.issuer(SecurityConfig.ISSUER)
 				.subject(String.valueOf(userId))
 				.issuedAt(now)
 				.expiresAt(expiresAt)
