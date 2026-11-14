@@ -40,6 +40,7 @@ import com.kattok.server.payment.entity.PaymentRecordStatus;
 import com.kattok.server.payment.repository.PaymentRecordRepository;
 import com.kattok.server.recommendation.entity.OverallStatus;
 import com.kattok.server.recommendation.entity.Recommendation;
+import com.kattok.server.recommendation.entity.RecommendationItem;
 import com.kattok.server.recommendation.repository.RecommendationRepository;
 import com.kattok.server.user.entity.User;
 import com.kattok.server.user.repository.UserRepository;
@@ -111,6 +112,24 @@ class RecommendationControllerTest {
 	}
 
 	@Test
+	@DisplayName("추천 응답에 혜택별 계산식과 한도별 잔여 값 및 질문 대상 ID를 추가한다")
+	void create_expandedDetails() throws Exception {
+		register("굿데이");
+		create("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.items[0].expectedBenefit").value(500))
+				.andExpect(jsonPath("$.items[0].calculation.rate").value(10))
+				.andExpect(jsonPath("$.items[0].remainingLimitAfter.source").value("ASSUMED"))
+				.andExpect(jsonPath("$.items[0].appliedRules[0].calculation.rate").value(10))
+				.andExpect(jsonPath("$.items[0].appliedRules[0].capGroupIds[0]").isNumber())
+				.andExpect(jsonPath("$.items[0].remainingLimitsAfter[0].capGroupId").isNumber())
+				.andExpect(jsonPath("$.items[0].remainingLimitsAfter[0].remainingLimitBefore").isNumber())
+				.andExpect(jsonPath("$.items[0].remainingLimitsAfter[0].amountSource").value("ASSUMED"))
+				.andExpect(jsonPath("$.items[0].assumptions[?(@.type == 'REMAINING_LIMIT')].capGroupId").value(
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.instanceOf(Number.class))));
+	}
+
+	@Test
 	@DisplayName("업종만 고르면 basis는 CATEGORY이고 merchant는 null이다")
 	void create_categoryOnly() throws Exception {
 		register("굿데이");
@@ -155,6 +174,7 @@ class RecommendationControllerTest {
 				.andExpect(jsonPath("$.items[0].status").value("NO_BENEFIT"))
 				.andExpect(jsonPath("$.items[0].expectedBenefit").value(0))
 				.andExpect(jsonPath("$.items[0].calculation").doesNotExist())
+				.andExpect(jsonPath("$.items[0].remainingLimitsAfter", hasSize(0)))
 				.andExpect(jsonPath("$.items[0].noBenefitReason").isNotEmpty());
 	}
 
@@ -205,7 +225,7 @@ class RecommendationControllerTest {
 	@Test
 	@DisplayName("저장한 추천을 조회하면 생성 때와 같은 응답을 준다")
 	void get_sameAsCreated() throws Exception {
-		register("굿데이");
+		UserCard goodDay = register("굿데이");
 		register("알파벳카드S");
 		String created = create("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()))
 				.andExpect(status().isCreated())
@@ -213,10 +233,47 @@ class RecommendationControllerTest {
 		Number id = JsonPath.read(created, "$.id");
 		entityManager.flush();
 		entityManager.clear();
+		// 실적을 바꾼 뒤에도 한도별 예측과 가정은 추천 당시 스냅샷 그대로여야 한다.
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+				"/api/v1/owned-cards/{id}/state", goodDay.getId())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"month\": \"%s\", \"performance\": {\"status\": \"BELOW\"}}".formatted(
+						java.time.YearMonth.now(java.time.ZoneId.of("Asia/Seoul")))))
+				.andExpect(status().isOk());
+		entityManager.flush();
+		entityManager.clear();
 
 		mockMvc.perform(get("/api/v1/recommendations/{id}", id.longValue()))
 				.andExpect(status().isOk())
 				.andExpect(content().json(created, JsonCompareMode.STRICT));
+	}
+
+	@Test
+	@DisplayName("확장 필드가 없는 이전 스냅샷은 현재 규칙으로 채우지 않고 기존 응답을 유지한다")
+	void get_legacySnapshot() throws Exception {
+		register("굿데이");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+		RecommendationItem item = entityManager.createQuery(
+				"select i from RecommendationItem i where i.recommendation.id = :id", RecommendationItem.class)
+				.setParameter("id", id).getSingleResult();
+		item.getAppliedRules().remove("remainingLimitsAfter");
+		item.getAppliedRules().put("rules", java.util.List.of(Map.of(
+				"ruleId", 123L, "description", "이전에 저장된 혜택", "benefitAmount", 500L)));
+		item.getUnknownConditions().put("assumptions", java.util.List.of(Map.of(
+				"type", "PERFORMANCE_TIER", "message", "이전 가정", "affectsRank", true)));
+		entityManager.flush();
+		entityManager.clear();
+
+		mockMvc.perform(get("/api/v1/recommendations/{id}", id))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].expectedBenefit").value(500))
+				.andExpect(jsonPath("$.items[0].calculation.rate").value(10))
+				.andExpect(jsonPath("$.items[0].appliedRules[0].ruleId").value(123))
+				.andExpect(jsonPath("$.items[0].appliedRules[0].calculation").doesNotExist())
+				.andExpect(jsonPath("$.items[0].appliedRules[0].capGroupIds", hasSize(0)))
+				.andExpect(jsonPath("$.items[0].assumptions[0].message").value("이전 가정"))
+				.andExpect(jsonPath("$.items[0].assumptions[0].capGroupId").doesNotExist())
+				.andExpect(jsonPath("$.items[0].remainingLimitsAfter", hasSize(0)));
 	}
 
 	@Test

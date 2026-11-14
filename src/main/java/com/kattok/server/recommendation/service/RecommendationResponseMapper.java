@@ -16,6 +16,7 @@ import com.kattok.server.recommendation.dto.RecommendationResponse.IdName;
 import com.kattok.server.recommendation.dto.RecommendationResponse.Item;
 import com.kattok.server.recommendation.dto.RecommendationResponse.Reason;
 import com.kattok.server.recommendation.dto.RecommendationResponse.RemainingLimit;
+import com.kattok.server.recommendation.dto.RecommendationResponse.RemainingLimitProjection;
 import com.kattok.server.recommendation.entity.Recommendation;
 import com.kattok.server.recommendation.entity.RecommendationItem;
 import com.kattok.server.recommendation.entity.RecommendationItemStatus;
@@ -92,7 +93,9 @@ class RecommendationResponseMapper {
 				})),
 				read(applied.get("remainingLimitAfter"), new TypeReference<RemainingLimit>() {
 				}),
-				(String) applied.get("noBenefitReason"));
+				(String) applied.get("noBenefitReason"),
+				orEmpty(read(applied.get("remainingLimitsAfter"), new TypeReference<List<RemainingLimitProjection>>() {
+				})));
 	}
 
 	private ExcludedCard toExcluded(RecommendationItem item) {

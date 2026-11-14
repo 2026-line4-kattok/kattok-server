@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kattok.server.benefit.engine.AssumptionAnalyzer;
 import com.kattok.server.benefit.engine.BenefitDetails;
 import com.kattok.server.benefit.engine.BenefitDetails.AssumptionType;
+import com.kattok.server.benefit.engine.BenefitDetails.AssumptionTarget;
 import com.kattok.server.benefit.engine.BenefitEngine;
 import com.kattok.server.benefit.engine.BenefitEngine.CardInput;
 import com.kattok.server.benefit.engine.CardBenefitResult;
@@ -42,6 +43,7 @@ import com.kattok.server.recommendation.dto.RecommendationResponse.AppliedRule;
 import com.kattok.server.recommendation.dto.RecommendationResponse.Assumption;
 import com.kattok.server.recommendation.dto.RecommendationResponse.Calculation;
 import com.kattok.server.recommendation.dto.RecommendationResponse.RemainingLimit;
+import com.kattok.server.recommendation.dto.RecommendationResponse.RemainingLimitProjection;
 import com.kattok.server.recommendation.entity.OverallStatus;
 import com.kattok.server.recommendation.entity.Recommendation;
 import com.kattok.server.recommendation.entity.RecommendationItem;
@@ -201,22 +203,32 @@ public class RecommendationService {
 		List<AppliedRule> appliedRules = List.of();
 		Calculation calculation = null;
 		RemainingLimit remainingLimitAfter = null;
+		List<RemainingLimitProjection> remainingLimitsAfter = List.of();
 		List<Assumption> assumptions = new ArrayList<>();
 		if (rule != null) {
-			appliedRules = List.of(new AppliedRule(rule.id(), card.appliedRuleText(), card.expectedBenefit()));
 			BenefitDetails.Calculation detail = BenefitDetails.calculation(rule, payment.amount(), card.expectedBenefit());
 			calculation = new Calculation(
 					detail.baseAmount(), detail.ratePercent(), detail.fixedAmount(), detail.capApplied());
+			appliedRules = List.of(new AppliedRule(rule.id(), card.appliedRuleText(), card.expectedBenefit(),
+					calculation, BenefitDetails.capGroupIds(rule, input.product())));
+			remainingLimitsAfter = BenefitDetails.remainingLimitsAfter(
+					rule, input.product(), input.snapshot(), card.expectedBenefit()).stream()
+					.map(limit -> new RemainingLimitProjection(
+							limit.capGroupId(), limit.description(), limit.capPeriod(), limit.capAmount(), limit.capCount(),
+							limit.remainingLimitBefore(), limit.remainingLimitAmount(), limit.remainingCountBefore(),
+							limit.remainingCount(), limit.amountSource() == null ? null : limit.amountSource().name(),
+							limit.countSource() == null ? null : limit.countSource().name()))
+					.toList();
 			BenefitDetails.RemainingLimit limit = BenefitDetails.remainingLimitAfter(
 					rule, input.product(), input.snapshot(), card.expectedBenefit());
 			if (limit != null) {
 				remainingLimitAfter = new RemainingLimit(limit.amount(), limit.source().name());
 			}
-			Set<AssumptionType> types = BenefitDetails.assumptionTypes(card, rule, input.product(), input.snapshot());
-			for (AssumptionType type : types) {
-				boolean affectsRank = analyzer.affectsRank(
-						inputs, payment, card.userCardId(), type, result.recommendedUserCardId());
-				assumptions.add(new Assumption(type.name(), assumptionMessage(type, productName), affectsRank));
+			for (AssumptionTarget target : BenefitDetails.assumptionTargets(card, rule, input.product(), input.snapshot())) {
+				boolean affectsRank = analyzer.affectsRank(inputs, payment, card.userCardId(),
+						target.type(), target.capGroupId(), result.recommendedUserCardId());
+				assumptions.add(new Assumption(target.type().name(), assumptionMessage(target.type(), productName),
+						affectsRank, target.capGroupId()));
 			}
 		}
 
@@ -224,6 +236,7 @@ public class RecommendationService {
 		applied.put("rules", toJson(appliedRules));
 		applied.put("calculation", toJson(calculation));
 		applied.put("remainingLimitAfter", toJson(remainingLimitAfter));
+		applied.put("remainingLimitsAfter", toJson(remainingLimitsAfter));
 		applied.put("noBenefitReason", noBenefitMessage(card.noBenefitReason(), categoryBasis));
 
 		Map<String, Object> unknown = new LinkedHashMap<>();
