@@ -3,6 +3,7 @@ package com.kattok.server.card.service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import com.kattok.server.benefit.engine.ProductRules;
 import com.kattok.server.benefit.engine.ProductRules.Cap;
 import com.kattok.server.benefit.engine.ProductRules.Rule;
 import com.kattok.server.benefit.service.ProductRulesReader;
+import com.kattok.server.card.dto.PerformanceStatus;
 import com.kattok.server.card.dto.UpdateCardStateRequest;
 import com.kattok.server.card.dto.UserCardStateResponse;
 import com.kattok.server.card.dto.UserCardStateResponse.CapStatus;
@@ -40,6 +42,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class UserCardStateService {
 
+	private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
 	private final UserCardRepository userCardRepository;
 	private final UserCardStateRepository userCardStateRepository;
 	private final UserCardCapUsageRepository userCardCapUsageRepository;
@@ -52,7 +56,8 @@ public class UserCardStateService {
 	}
 
 	/**
-	 * 보내지 않은 필드는 그대로 둔다(부분 수정). {@code caps}에 담지 않은 한도 그룹은 바뀌지 않는다.
+	 * 보내지 않은 필드는 그대로 둔다(부분 수정). {@code performance}를 보내지 않으면 실적 확인 상태가
+	 * 바뀌지 않는다. {@code caps}에 담지 않은 한도 그룹도 바뀌지 않는다.
 	 */
 	@Transactional
 	public UserCardStateResponse updateState(Long userCardId, UpdateCardStateRequest request) {
@@ -60,15 +65,13 @@ public class UserCardStateService {
 		Long productId = userCard.getProduct().getId();
 		LocalDate monthStart = request.month().atDay(1);
 
-		Long tierId = null;
-		if (request.performanceTierId() != null) {
-			tierId = cardPerformanceTierRepository
-					.findByIdAndProductId(request.performanceTierId(), productId)
-					.orElseThrow(() -> ApiException.invalidInput("실적 구간이 해당 상품의 구간이 아닙니다."))
-					.getId();
+		if (request.performance() != null) {
+			PerformanceStatus status = request.performance().status();
+			CardPerformanceTier tier = resolveTier(status, request.performance().tierId(), productId);
+			userCardStateRepository.upsert(
+					userCard.getId(), monthStart, tier == null ? null : tier.getId(), status.name(),
+					ConfirmationSource.USER_CONFIRMED.name(), Instant.now());
 		}
-		userCardStateRepository.upsert(
-				userCard.getId(), monthStart, tierId, ConfirmationSource.USER_CONFIRMED.name(), Instant.now());
 
 		if (request.caps() != null && !request.caps().isEmpty()) {
 			Map<Long, Cap> caps = capsOf(productId);
@@ -90,8 +93,26 @@ public class UserCardStateService {
 
 	private UserCard findOwnedCard(Long userCardId) {
 		Long userId = currentUserProvider.get().getId();
-		return userCardRepository.findByIdAndUserId(userCardId, userId)
+		return userCardRepository.findByIdAndUserIdAndDeletedAtIsNull(userCardId, userId)
 				.orElseThrow(() -> ApiException.notFound("OWNED_CARD_NOT_FOUND", "존재하지 않는 카드입니다."));
+	}
+
+	private CardPerformanceTier resolveTier(PerformanceStatus status, Long tierId, Long productId) {
+		validatePerformanceInput(status, tierId);
+		if (status != PerformanceStatus.CONFIRMED) {
+			return null;
+		}
+		return cardPerformanceTierRepository.findByIdAndProductId(tierId, productId)
+				.orElseThrow(() -> ApiException.invalidInput("실적 구간이 해당 상품의 구간이 아닙니다."));
+	}
+
+	private static void validatePerformanceInput(PerformanceStatus status, Long tierId) {
+		if (status == PerformanceStatus.CONFIRMED && tierId == null) {
+			throw ApiException.invalidInput("CONFIRMED 상태에는 실적 구간 id가 필요합니다.");
+		}
+		if (status != PerformanceStatus.CONFIRMED && tierId != null) {
+			throw ApiException.invalidInput("%s 상태에는 실적 구간 id를 보내지 않습니다.".formatted(status));
+		}
 	}
 
 	private UserCardStateResponse buildResponse(UserCard userCard, YearMonth month) {
@@ -104,6 +125,7 @@ public class UserCardStateService {
 
 		UserCardState state = userCardStateRepository.findByUserCardIdAndPeriodMonth(userCard.getId(), month)
 				.orElse(null);
+		PerformanceStatus status = state == null ? PerformanceStatus.UNKNOWN : state.getPerformanceStatus();
 		CardPerformanceTier confirmedTier = state == null ? null : state.getPerformanceTier();
 		PerformanceTierOption performanceTier = confirmedTier == null ? null : toOption(confirmedTier);
 
@@ -112,11 +134,12 @@ public class UserCardStateService {
 				: capsForTier(productId, confirmedTier.getId(), userCard.getId(), month);
 
 		return new UserCardStateResponse(
-				month.toString(), performanceTier, options, caps, state == null ? null : state.getConfirmedAt());
+				month.toString(), status, performanceTier, options, caps,
+				state == null ? null : state.getConfirmedAt());
 	}
 
 	private List<CapStatus> capsForTier(Long productId, Long confirmedTierId, Long userCardId, YearMonth month) {
-		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now()).get(productId);
+		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
 		if (productRules == null) {
 			return List.of();
 		}
@@ -138,7 +161,7 @@ public class UserCardStateService {
 	}
 
 	private Map<Long, Cap> capsOf(Long productId) {
-		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now()).get(productId);
+		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
 		return productRules == null ? Map.of() : productRules.caps();
 	}
 

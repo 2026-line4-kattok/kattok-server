@@ -7,6 +7,7 @@ import com.kattok.server.benefit.entity.CapPeriod;
 
 public record UserCardStateResponse(
 		String month,
+		PerformanceStatus performanceStatus,
 		PerformanceTierOption performanceTier,
 		List<PerformanceTierOption> performanceTierOptions,
 		List<CapStatus> caps,

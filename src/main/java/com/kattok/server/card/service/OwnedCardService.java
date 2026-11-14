@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.card.dto.OwnedCardResponse;
+import com.kattok.server.card.dto.PerformanceStatus;
 import com.kattok.server.card.dto.RegisterCardRequest;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.CardProduct;
@@ -56,8 +57,9 @@ public class OwnedCardService {
 		return userCards.stream()
 				.map(userCard -> {
 					UserCardState state = statesByUserCardId.get(userCard.getId());
+					PerformanceStatus status = state == null ? PerformanceStatus.UNKNOWN : state.getPerformanceStatus();
 					CardPerformanceTier tier = state == null ? null : state.getPerformanceTier();
-					return OwnedCardResponse.of(userCard, tier);
+					return OwnedCardResponse.of(userCard, status, tier);
 				})
 				.toList();
 	}
@@ -72,27 +74,50 @@ public class OwnedCardService {
 			throw ApiException.conflict("CARD_ALREADY_REGISTERED", "이미 등록한 카드입니다.");
 		}
 
+		PerformanceStatus status = PerformanceStatus.UNKNOWN;
 		CardPerformanceTier tier = null;
-		if (request.performanceTierId() != null) {
-			tier = cardPerformanceTierRepository.findByIdAndProductId(request.performanceTierId(), product.getId())
-					.orElseThrow(() -> ApiException.invalidInput("실적 구간이 해당 상품의 구간이 아닙니다."));
+		if (request.performance() != null) {
+			status = request.performance().status();
+			tier = resolveTier(status, request.performance().tierId(), product.getId());
 		}
 
 		UserCard userCard = userCardRepository.save(new UserCard(user, product));
-		if (tier != null) {
+		if (status != PerformanceStatus.UNKNOWN) {
 			userCardStateRepository.upsert(
-					userCard.getId(), YearMonth.now(KST).atDay(1), tier.getId(),
+					userCard.getId(), YearMonth.now(KST).atDay(1), tier == null ? null : tier.getId(), status.name(),
 					ConfirmationSource.USER_CONFIRMED.name(), Instant.now());
 		}
 
-		return OwnedCardResponse.of(userCard, tier);
+		return OwnedCardResponse.of(userCard, status, tier);
 	}
 
+	private CardPerformanceTier resolveTier(PerformanceStatus status, Long tierId, Long productId) {
+		validatePerformanceInput(status, tierId);
+		if (status != PerformanceStatus.CONFIRMED) {
+			return null;
+		}
+		return cardPerformanceTierRepository.findByIdAndProductId(tierId, productId)
+				.orElseThrow(() -> ApiException.invalidInput("실적 구간이 해당 상품의 구간이 아닙니다."));
+	}
+
+	private static void validatePerformanceInput(PerformanceStatus status, Long tierId) {
+		if (status == PerformanceStatus.CONFIRMED && tierId == null) {
+			throw ApiException.invalidInput("CONFIRMED 상태에는 실적 구간 id가 필요합니다.");
+		}
+		if (status != PerformanceStatus.CONFIRMED && tierId != null) {
+			throw ApiException.invalidInput("%s 상태에는 실적 구간 id를 보내지 않습니다.".formatted(status));
+		}
+	}
+
+	/** 마지막 카드는 삭제할 수 없다(F-04-04). 이미 삭제된 카드는 재삭제도 204로 응답하므로 이 제약에서 제외한다. */
 	@Transactional
 	public void delete(Long userCardId) {
 		Long userId = currentUserProvider.get().getId();
 		UserCard userCard = userCardRepository.findByIdAndUserId(userCardId, userId)
 				.orElseThrow(() -> ApiException.notFound("OWNED_CARD_NOT_FOUND", "존재하지 않는 카드입니다."));
+		if (userCard.getDeletedAt() == null && userCardRepository.countByUserIdAndDeletedAtIsNull(userId) <= 1) {
+			throw ApiException.conflict("LAST_OWNED_CARD", "마지막 카드는 삭제할 수 없습니다.");
+		}
 		userCard.delete();
 	}
 }

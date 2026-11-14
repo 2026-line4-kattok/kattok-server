@@ -36,7 +36,7 @@ class OwnedCardRegisterControllerTest {
 	private CardPerformanceTierRepository cardPerformanceTierRepository;
 
 	@Test
-	@DisplayName("실적 구간 없이 등록하면 performanceTier가 null인 채로 201을 반환한다")
+	@DisplayName("실적 구간 없이 등록하면 performanceStatus는 UNKNOWN, performanceTier는 null인 채로 201을 반환한다")
 	void register_withoutTier() throws Exception {
 		Long productId = starPlusProductId();
 
@@ -44,6 +44,7 @@ class OwnedCardRegisterControllerTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"productId\": %d}".formatted(productId)))
 				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.performanceStatus").value("UNKNOWN"))
 				.andExpect(jsonPath("$.performanceTier").doesNotExist());
 	}
 
@@ -55,9 +56,24 @@ class OwnedCardRegisterControllerTest {
 
 		mockMvc.perform(post("/api/v1/owned-cards")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"productId\": %d, \"performanceTierId\": %d}".formatted(productId, tierId)))
+						.content(("{\"productId\": %d, \"performance\": {\"status\": \"CONFIRMED\", \"tierId\": %d}}")
+								.formatted(productId, tierId)))
 				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.performanceStatus").value("CONFIRMED"))
 				.andExpect(jsonPath("$.performanceTier.id").value(tierId));
+	}
+
+	@Test
+	@DisplayName("최저 구간도 못 채웠다고 등록하면 BELOW로 반영된다")
+	void register_withBelow() throws Exception {
+		Long productId = starPlusProductId();
+
+		mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d, \"performance\": {\"status\": \"BELOW\"}}".formatted(productId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.performanceStatus").value("BELOW"))
+				.andExpect(jsonPath("$.performanceTier").doesNotExist());
 	}
 
 	@Test
@@ -74,7 +90,20 @@ class OwnedCardRegisterControllerTest {
 
 		mockMvc.perform(post("/api/v1/owned-cards")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"productId\": %d, \"performanceTierId\": %d}".formatted(productId, wrongTierId)))
+						.content(("{\"productId\": %d, \"performance\": {\"status\": \"CONFIRMED\", \"tierId\": %d}}")
+								.formatted(productId, wrongTierId)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	@DisplayName("CONFIRMED인데 tierId를 안 보내면 400을 반환한다")
+	void register_confirmedWithoutTierId_returns400() throws Exception {
+		Long productId = starPlusProductId();
+
+		mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d, \"performance\": {\"status\": \"CONFIRMED\"}}".formatted(productId)))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 	}

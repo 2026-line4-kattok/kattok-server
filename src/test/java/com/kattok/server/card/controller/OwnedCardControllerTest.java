@@ -54,9 +54,10 @@ class OwnedCardControllerTest {
 	}
 
 	@Test
-	@DisplayName("삭제하면 목록에서 빠지고, 다시 삭제해도 204를 반환한다")
+	@DisplayName("다른 카드가 남아있으면 삭제하면 목록에서 빠지고, 다시 삭제해도 204를 반환한다")
 	void delete_removesFromList() throws Exception {
-		UserCard userCard = registerAnyProductForDemoUser();
+		registerAnyProductForDemoUser();
+		UserCard userCard = registerAnotherProductForDemoUser();
 
 		mockMvc.perform(delete("/api/v1/owned-cards/{id}", userCard.getId()))
 				.andExpect(status().isNoContent());
@@ -66,6 +67,20 @@ class OwnedCardControllerTest {
 		mockMvc.perform(get("/api/v1/owned-cards"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.id == %d)]".formatted(userCard.getId())).doesNotExist());
+	}
+
+	@Test
+	@DisplayName("마지막 카드를 삭제하려 하면 409와 LAST_OWNED_CARD를 반환한다")
+	void delete_lastCard_returns409() throws Exception {
+		UserCard onlyCard = registerAnyProductForDemoUser();
+
+		mockMvc.perform(delete("/api/v1/owned-cards/{id}", onlyCard.getId()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("LAST_OWNED_CARD"));
+
+		mockMvc.perform(get("/api/v1/owned-cards"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == %d)]".formatted(onlyCard.getId())).exists());
 	}
 
 	@Test
@@ -79,6 +94,12 @@ class OwnedCardControllerTest {
 	private UserCard registerAnyProductForDemoUser() {
 		User demoUser = userRepository.findByEmail("demo@kattok.app").orElseThrow();
 		CardProduct product = cardProductRepository.findAll().stream().findFirst().orElseThrow();
+		return userCardRepository.save(new UserCard(demoUser, product));
+	}
+
+	private UserCard registerAnotherProductForDemoUser() {
+		User demoUser = userRepository.findByEmail("demo@kattok.app").orElseThrow();
+		CardProduct product = cardProductRepository.findAll().stream().skip(1).findFirst().orElseThrow();
 		return userCardRepository.save(new UserCard(demoUser, product));
 	}
 }
