@@ -1,6 +1,8 @@
 package com.kattok.server.recommendation.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,5 +27,10 @@ public class RecommendationController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public RecommendationResponse create(@Valid @RequestBody CreateRecommendationRequest request) {
 		return recommendationService.create(request);
+	}
+
+	@GetMapping("/{id}")
+	public RecommendationResponse get(@PathVariable Long id) {
+		return recommendationService.get(id);
 	}
 }

@@ -137,6 +137,19 @@ public class RecommendationService {
 		return responseMapper.toResponse(recommendation, items);
 	}
 
+	/** 저장한 추천을 그대로 돌려준다. 카드 상태가 바뀌어도 다시 계산하지 않는다(명세 1-2). */
+	public RecommendationResponse get(Long recommendationId) {
+		Recommendation recommendation = findOwned(recommendationId);
+		return responseMapper.toResponse(
+				recommendation, recommendationItemRepository.findByRecommendationIdOrderByIdAsc(recommendation.getId()));
+	}
+
+	private Recommendation findOwned(Long recommendationId) {
+		Long userId = currentUserProvider.get().getId();
+		return recommendationRepository.findByIdAndUserId(recommendationId, userId)
+				.orElseThrow(() -> ApiException.notFound("RECOMMENDATION_NOT_FOUND", "존재하지 않는 추천입니다."));
+	}
+
 	/** 조건부 추천일 때만, 확인된 정보만으로 계산한 1위가 추천 카드와 다르면 그 카드. */
 	private Long confirmedOnlyTop(RecommendationResult result, List<CardInput> inputs, PaymentContext payment) {
 		if (result.overallStatus() != RecommendationResult.OverallStatus.CONDITIONAL) {

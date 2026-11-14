@@ -2,9 +2,14 @@ package com.kattok.server.recommendation.controller;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.Instant;
+import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,10 +18,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+
+import com.jayway.jsonpath.JsonPath;
 import com.kattok.server.TestcontainersConfiguration;
 import com.kattok.server.card.entity.CardProduct;
 import com.kattok.server.card.entity.DataStatus;
@@ -25,6 +34,9 @@ import com.kattok.server.card.repository.CardProductRepository;
 import com.kattok.server.card.repository.UserCardRepository;
 import com.kattok.server.merchant.entity.Merchant;
 import com.kattok.server.merchant.repository.MerchantRepository;
+import com.kattok.server.recommendation.entity.OverallStatus;
+import com.kattok.server.recommendation.entity.Recommendation;
+import com.kattok.server.recommendation.repository.RecommendationRepository;
 import com.kattok.server.user.entity.User;
 import com.kattok.server.user.repository.UserRepository;
 
@@ -48,6 +60,12 @@ class RecommendationControllerTest {
 
 	@Autowired
 	private MerchantRepository merchantRepository;
+
+	@Autowired
+	private RecommendationRepository recommendationRepository;
+
+	@Autowired
+	private EntityManager entityManager;
 
 	@Test
 	@DisplayName("실적을 모르는 두 카드를 비교하면 가장 낮은 구간으로 가정한 조건부 결과를 순위대로 반환한다")
@@ -175,6 +193,38 @@ class RecommendationControllerTest {
 		create("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("NO_OWNED_CARDS"));
+	}
+
+	@Test
+	@DisplayName("저장한 추천을 조회하면 생성 때와 같은 응답을 준다")
+	void get_sameAsCreated() throws Exception {
+		register("굿데이");
+		register("알파벳카드S");
+		String created = create("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		Number id = JsonPath.read(created, "$.id");
+		entityManager.flush();
+		entityManager.clear();
+
+		mockMvc.perform(get("/api/v1/recommendations/{id}", id.longValue()))
+				.andExpect(status().isOk())
+				.andExpect(content().json(created, JsonCompareMode.STRICT));
+	}
+
+	@Test
+	@DisplayName("없는 추천이나 다른 사용자의 추천을 조회하면 404 RECOMMENDATION_NOT_FOUND다")
+	void get_notFound() throws Exception {
+		mockMvc.perform(get("/api/v1/recommendations/{id}", 999999))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+
+		User other = userRepository.save(new User("other@kattok.app", "hash", Instant.now()));
+		Merchant starbucks = starbucks();
+		Recommendation othersRecommendation = recommendationRepository.saveAndFlush(new Recommendation(
+				other, starbucks, starbucks.getCategory(), 5000, Map.of(), OverallStatus.NO_BENEFIT, null));
+		mockMvc.perform(get("/api/v1/recommendations/{id}", othersRecommendation.getId()))
+				.andExpect(status().isNotFound());
 	}
 
 	private ResultActions create(String body) throws Exception {
