@@ -13,7 +13,7 @@ import jakarta.validation.constraints.NotNull;
  * 없어, 컨트롤러가 요청 본문을 직접 들여다보고 이 레코드를 만든다.
  */
 public record UpdateCardStateRequest(
-		@NotNull YearMonth month, @Valid PerformanceInput performance, @Valid List<CapUpdate> caps) {
+		@NotNull YearMonth month, @Valid PerformanceInput performance, List<@Valid CapUpdate> caps) {
 
 	public record CapUpdate(@NotNull Long capGroupId, Long remainingLimitAmount, Integer remainingCount) {
 	}

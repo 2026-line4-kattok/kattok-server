@@ -175,6 +175,7 @@ class UserCardStateControllerTest {
 	@Test
 	@DisplayName("삭제된 카드의 상태를 조회·수정하면 404를 반환한다")
 	void deletedCard_stateAccess_returns404() throws Exception {
+		registerAnotherProduct(); // 마지막 카드는 삭제할 수 없으므로(F-04-04) 다른 카드를 하나 더 등록해 둔다
 		Long userCardId = registerStarPlus();
 		mockMvc.perform(delete("/api/v1/owned-cards/{id}", userCardId)).andExpect(status().isNoContent());
 
@@ -202,6 +203,19 @@ class UserCardStateControllerTest {
 						.content("{\"productId\": %d}".formatted(productId)))
 				.andReturn().getResponse().getContentAsString();
 		return ((Number) JsonPath.read(response, "$.id")).longValue();
+	}
+
+	private void registerAnotherProduct() throws Exception {
+		Long starPlusId = cardProductRepository.search(null, "스타플러스", null).stream()
+				.findFirst().orElseThrow().getId();
+		Long productId = cardProductRepository.findAll().stream()
+				.map(com.kattok.server.card.entity.CardProduct::getId)
+				.filter(id -> !id.equals(starPlusId))
+				.findFirst()
+				.orElseThrow();
+		mockMvc.perform(post("/api/v1/owned-cards")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"productId\": %d}".formatted(productId)));
 	}
 
 	private Long convenienceTierId() {
