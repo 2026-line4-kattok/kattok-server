@@ -16,18 +16,20 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.kattok.server.TestcontainersConfiguration;
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@SpringBootTest(
+		webEnvironment = SpringBootTest.WebEnvironment.MOCK,
+		properties = "kattok.demo.password=" + DemoAccountLoginTest.DEMO_PASSWORD)
 @AutoConfigureMockMvc
 class DemoAccountLoginTest {
 
-	/** V23 마이그레이션 주석에 적힌 테스트 계정 비밀번호. */
-	private static final String DEMO_PASSWORD = "kattok-demo-1b9e2b";
+	/** 이 테스트에서만 쓰는 값. 실제 비밀번호는 DEMO_USER_PASSWORD 환경변수로 넣는다. */
+	static final String DEMO_PASSWORD = "test-only-demo-password";
 
 	@Autowired
 	private MockMvc mockMvc;
 
 	@Test
-	@DisplayName("시연용 테스트 계정으로 로그인할 수 있다")
+	@DisplayName("DEMO_USER_PASSWORD를 넣으면 테스트 계정으로 로그인할 수 있다")
 	void demoAccountCanLogin() throws Exception {
 		String body = """
 				{"email": "demo@kattok.app", "password": "%s"}
