@@ -7,3 +7,15 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+
+kattok:
+  jwt:
+    # 운영(supabase 프로필)은 환경변수로만 넣는다. 로컬·테스트 키는 application-local.yml에 있다.
+    secret: ${JWT_SECRET:}
+    access-token-validity: 14d
+  auth:
+    # true면 토큰 없는 요청을 테스트 계정으로 처리한다(API 연결 테스트용 임시). 로컬 프로필만 켠다.
+    anonymous-demo-user: ${KATTOK_ANONYMOUS_DEMO_USER:false}
+  demo:
+    # 시연용 테스트 계정 비밀번호. 환경변수로만 넣고, 없으면 테스트 계정으로 로그인할 수 없다.
+    password: ${DEMO_USER_PASSWORD:}

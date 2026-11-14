@@ -3,3 +3,10 @@ spring:
     url: jdbc:postgresql://localhost:${DB_PORT:5433}/kattok
     username: kattok
     password: kattok
+
+kattok:
+  jwt:
+    # 로컬 개발·테스트 전용 키. 운영에서 쓰지 않는다.
+    secret: kattok-local-dev-only-jwt-secret-0123456789
+  auth:
+    anonymous-demo-user: true

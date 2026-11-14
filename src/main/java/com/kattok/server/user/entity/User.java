@@ -47,4 +47,8 @@ public class User {
 		this.passwordHash = passwordHash;
 		this.termsAgreedAt = termsAgreedAt;
 	}
+
+	public void changePasswordHash(String passwordHash) {
+		this.passwordHash = passwordHash;
+	}
 }
