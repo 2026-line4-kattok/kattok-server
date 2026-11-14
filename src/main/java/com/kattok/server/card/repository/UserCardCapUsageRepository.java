@@ -3,6 +3,7 @@ package com.kattok.server.card.repository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,8 @@ import com.kattok.server.card.entity.UserCardCapUsage;
 public interface UserCardCapUsageRepository extends JpaRepository<UserCardCapUsage, Long> {
 
 	List<UserCardCapUsage> findByUserCardIdAndPeriodMonth(Long userCardId, YearMonth periodMonth);
+
+	List<UserCardCapUsage> findByUserCardIdInAndPeriodMonth(Collection<Long> userCardIds, YearMonth periodMonth);
 
 	/**
 	 * 한도 그룹 하나의 한 달 잔여 한도를 upsert한다. {@link com.kattok.server.benefit.entity.BenefitCapGroup}
