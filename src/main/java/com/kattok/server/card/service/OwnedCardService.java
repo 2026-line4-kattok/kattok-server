@@ -1,5 +1,6 @@
 package com.kattok.server.card.service;
 
+import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
@@ -10,12 +11,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.card.dto.OwnedCardResponse;
+import com.kattok.server.card.dto.RegisterCardRequest;
 import com.kattok.server.card.entity.CardPerformanceTier;
+import com.kattok.server.card.entity.CardProduct;
+import com.kattok.server.card.entity.ConfirmationSource;
 import com.kattok.server.card.entity.UserCard;
 import com.kattok.server.card.entity.UserCardState;
+import com.kattok.server.card.repository.CardPerformanceTierRepository;
+import com.kattok.server.card.repository.CardProductRepository;
 import com.kattok.server.card.repository.UserCardRepository;
 import com.kattok.server.card.repository.UserCardStateRepository;
 import com.kattok.server.global.ApiException;
+import com.kattok.server.user.entity.User;
 import com.kattok.server.user.service.CurrentUserProvider;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +36,8 @@ public class OwnedCardService {
 
 	private final UserCardRepository userCardRepository;
 	private final UserCardStateRepository userCardStateRepository;
+	private final CardProductRepository cardProductRepository;
+	private final CardPerformanceTierRepository cardPerformanceTierRepository;
 	private final CurrentUserProvider currentUserProvider;
 
 	public List<OwnedCardResponse> findAll() {
@@ -51,6 +60,32 @@ public class OwnedCardService {
 					return OwnedCardResponse.of(userCard, tier);
 				})
 				.toList();
+	}
+
+	@Transactional
+	public OwnedCardResponse register(RegisterCardRequest request) {
+		User user = currentUserProvider.get();
+		CardProduct product = cardProductRepository.findById(request.productId())
+				.orElseThrow(() -> ApiException.notFound("CARD_PRODUCT_NOT_FOUND", "존재하지 않는 상품입니다."));
+
+		if (userCardRepository.findActiveProductIdsByUserId(user.getId()).contains(product.getId())) {
+			throw ApiException.conflict("CARD_ALREADY_REGISTERED", "이미 등록한 카드입니다.");
+		}
+
+		CardPerformanceTier tier = null;
+		if (request.performanceTierId() != null) {
+			tier = cardPerformanceTierRepository.findByIdAndProductId(request.performanceTierId(), product.getId())
+					.orElseThrow(() -> ApiException.invalidInput("실적 구간이 해당 상품의 구간이 아닙니다."));
+		}
+
+		UserCard userCard = userCardRepository.save(new UserCard(user, product));
+		if (tier != null) {
+			userCardStateRepository.upsert(
+					userCard.getId(), YearMonth.now(KST).atDay(1), tier.getId(),
+					ConfirmationSource.USER_CONFIRMED.name(), Instant.now());
+		}
+
+		return OwnedCardResponse.of(userCard, tier);
 	}
 
 	@Transactional

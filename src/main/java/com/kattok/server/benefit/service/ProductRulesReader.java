@@ -105,6 +105,8 @@ public class ProductRulesReader {
 				cap.getId(),
 				cap.getCapAmount(),
 				cap.getCapCount(),
-				cap.getParent() == null ? null : cap.getParent().getId());
+				cap.getParent() == null ? null : cap.getParent().getId(),
+				cap.getDescription(),
+				cap.getCapPeriod());
 	}
 }
