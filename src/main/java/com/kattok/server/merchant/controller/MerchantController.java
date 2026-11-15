@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kattok.server.merchant.dto.MerchantResponse;
+import com.kattok.server.merchant.dto.RecentMerchantResponse;
 import com.kattok.server.merchant.service.MerchantService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class MerchantController {
 	}
 
 	@GetMapping("/recent")
-	public List<MerchantResponse> recent() {
+	public List<RecentMerchantResponse> recent() {
 		return merchantService.recent();
 	}
 }
