@@ -10,7 +10,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -46,7 +45,8 @@ public class SecurityConfig {
 	@Bean
 	@ConditionalOnWebApplication(type = Type.SERVLET)
 	public SecurityFilterChain securityFilterChain(
-			HttpSecurity http, JsonErrorWriter jsonErrorWriter, AuthProperties authProperties) throws Exception {
+			HttpSecurity http, JsonErrorWriter jsonErrorWriter, AuthProperties authProperties,
+			ActiveUserJwtAuthenticationConverter activeUserConverter) throws Exception {
 		return http
 				.csrf(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
@@ -61,7 +61,7 @@ public class SecurityConfig {
 					}
 				})
 				.oauth2ResourceServer(oauth2 -> oauth2
-						.jwt(Customizer.withDefaults())
+						.jwt(jwt -> jwt.jwtAuthenticationConverter(activeUserConverter))
 						.authenticationEntryPoint(jsonErrorWriter)
 						.accessDeniedHandler(jsonErrorWriter))
 				.exceptionHandling(handling -> handling

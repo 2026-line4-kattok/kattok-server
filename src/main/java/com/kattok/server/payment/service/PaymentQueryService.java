@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class PaymentQueryService {
 	private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+	private static final Set<PaymentRecordStatus> SAVED_RESULTS = Set.of(
+			PaymentRecordStatus.PAID_RECOMMENDED, PaymentRecordStatus.PAID_OTHER);
 	private static final Comparator<PaymentResponses.Record> NEWEST = Comparator
 			.comparing(PaymentResponses.Record::recommendedAt).reversed()
 			.thenComparing(PaymentResponses.Record::recommendationId, Comparator.reverseOrder());
@@ -77,7 +80,7 @@ public class PaymentQueryService {
 				.filter(record -> userCardId == null || record.userCard() != null
 						&& record.userCard().userCardId().equals(userCardId)).toList();
 		var counted = records.stream().filter(record -> record.userCard() != null && record.savedBenefit() != null)
-				.filter(record -> record.result().equals("PAID_RECOMMENDED") || record.result().equals("PAID_OTHER"))
+				.filter(record -> SAVED_RESULTS.contains(PaymentRecordStatus.valueOf(record.result())))
 				.toList();
 		Map<Long, List<PaymentResponses.Record>> byCard = new LinkedHashMap<>();
 		counted.forEach(record -> byCard.computeIfAbsent(record.userCard().userCardId(), key -> new ArrayList<>()).add(record));
@@ -112,10 +115,39 @@ public class PaymentQueryService {
 				.orElseGet(() -> snapshot.excludedCards().stream().filter(item -> item.userCardId().equals(actualId))
 						.map(item -> item.productName()).findFirst().orElseGet(() -> cards.owned(userId, actualId).productName())));
 		return new PaymentResponses.Record(snapshot.id(), payment.getStatus().name(), snapshot.merchant(), snapshot.category(),
-				snapshot.amount(), recommended, actual, payment.getConfirmationVersion() > 0 ? payment.getSavedBenefit()
-				: actualId == null ? Long.valueOf(0) : benefit(snapshot, actualId),
+				snapshot.amount(), recommended, actual, resolvedBenefit(payment, snapshot, actualId),
 				snapshot.createdAt(), payment.getConfirmedAt());
 	}
+
+	/** 전체 기간 요약. 최신 저장 금액은 그대로, 이전 기록만 당시 추천에서 읽으며 카드 메타데이터는 조회하지 않는다. */
+	public AccountSummary accountSummary(Long userId) {
+		long count = payments.countByUserId(userId);
+		var paid = payments.findByUserIdAndStatusIn(userId, SAVED_RESULTS);
+		var legacy = paid.stream().filter(payment -> payment.getConfirmationVersion() <= 0)
+				.map(payment -> payment.getRecommendation().getId()).distinct().toList();
+		var snapshots = recommendations.read(userId, legacy);
+		long total = 0;
+		for (var payment : paid) {
+			RecommendationResponse snapshot = null;
+			Long cardId = null;
+			if (payment.getConfirmationVersion() <= 0) {
+				snapshot = Objects.requireNonNull(snapshots.get(payment.getRecommendation().getId()), "결제 추천 스냅샷이 없습니다.");
+				cardId = payment.getStatus() == PaymentRecordStatus.PAID_RECOMMENDED
+						? Objects.requireNonNull(snapshot.recommendedUserCardId(), "추천 카드가 없습니다.")
+						: payment.getActualUserCard().getId();
+			}
+			Long value = resolvedBenefit(payment, snapshot, cardId);
+			if (value != null) total += value;
+		}
+		return new AccountSummary(count, total);
+	}
+
+	private static Long resolvedBenefit(PaymentRecord payment, RecommendationResponse snapshot, Long cardId) {
+		if (payment.getConfirmationVersion() > 0) return payment.getSavedBenefit();
+		return cardId == null ? Long.valueOf(0) : benefit(snapshot, cardId);
+	}
+
+	public record AccountSummary(long paymentRecordCount, long savedBenefitTotal) {}
 
 	private static Long benefit(RecommendationResponse snapshot, Long cardId) {
 		return snapshot.items().stream().filter(item -> item.userCardId().equals(cardId)).map(Item::expectedBenefit)

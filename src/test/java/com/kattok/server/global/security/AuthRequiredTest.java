@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.kattok.server.TestcontainersConfiguration;
+import com.kattok.server.user.repository.UserRepository;
 
 /** 테스트 계정 대체 동작을 끈 상태(운영 기본값)에서는 토큰이 필요한지 확인한다. */
 @Import(TestcontainersConfiguration.class)
@@ -30,6 +31,9 @@ class AuthRequiredTest {
 
 	@Autowired
 	private TokenProvider tokenProvider;
+
+	@Autowired
+	private UserRepository users;
 
 	@Test
 	@DisplayName("토큰 없이 일반 API를 부르면 401 UNAUTHORIZED")
@@ -51,11 +55,21 @@ class AuthRequiredTest {
 	}
 
 	@Test
-	@DisplayName("발급한 토큰이 있으면 일반 API를 부를 수 있다")
+	@DisplayName("존재하는 계정의 유효한 토큰이면 일반 API를 부를 수 있다")
 	void withToken() throws Exception {
-		String token = tokenProvider.issue(Long.MAX_VALUE).value();
-		// 카드사 목록은 사용자 정보를 쓰지 않으므로, 서명이 맞는 토큰이면 필터를 통과해 200이다.
+		Long userId = users.findByEmail("demo@kattok.app").orElseThrow().getId();
+		String token = tokenProvider.issue(userId).value();
 		mockMvc.perform(get("/api/v1/card-issuers").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
 				.andExpect(status().isOk());
 	}
+
+	@Test
+	@DisplayName("공유 목록도 계정이 없는 토큰이면 401이다")
+	void missingAccountIsUnauthorized() throws Exception {
+		String token = tokenProvider.issue(Long.MAX_VALUE).value();
+		mockMvc.perform(get("/api/v1/card-issuers").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+	}
+
 }

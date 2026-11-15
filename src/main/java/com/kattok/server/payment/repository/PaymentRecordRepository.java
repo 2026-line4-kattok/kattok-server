@@ -17,6 +17,10 @@ import com.kattok.server.payment.entity.PaymentRecord;
 
 public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, Long> {
 
+	long countByUserId(Long userId);
+
+	List<PaymentRecord> findByUserIdAndStatusIn(Long userId, Collection<PaymentRecordStatus> statuses);
+
 	List<PaymentRecord> findByUserIdAndStatus(Long userId, PaymentRecordStatus status);
 
 	@Query("""
