@@ -26,6 +26,7 @@ import com.kattok.server.card.dto.UserCardStateResponse.CapStatus;
 import com.kattok.server.card.dto.UserCardStateResponse.PerformanceTierOption;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.ConfirmationSource;
+import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.entity.UserCard;
 import com.kattok.server.card.entity.UserCardCapUsage;
 import com.kattok.server.card.entity.UserCardState;
@@ -78,6 +79,10 @@ public class UserCardStateService {
 		LocalDate monthStart = request.month().atDay(1);
 
 		if (request.performance() != null) {
+			PerformanceType type = userCard.getProduct().getPerformanceType();
+			if (type != PerformanceType.SINGLE && type != PerformanceType.MULTIPLE) {
+				throw ApiException.invalidInput("이 카드는 실적을 입력할 수 없습니다.");
+			}
 			PerformanceStatus status = request.performance().status();
 			CardPerformanceTier tier = resolveTier(status, request.performance().tierId(), productId);
 			userCardStateRepository.upsert(
