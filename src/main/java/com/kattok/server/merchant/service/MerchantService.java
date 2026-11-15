@@ -80,7 +80,7 @@ public class MerchantService {
 		return merchantIds.stream()
 				.map(merchantsById::get)
 				.filter(Objects::nonNull)
-				.map(MerchantResponse::from)
+				.map(merchant -> MerchantResponse.of(merchant, isSupported(merchant)))
 				.toList();
 	}
 
