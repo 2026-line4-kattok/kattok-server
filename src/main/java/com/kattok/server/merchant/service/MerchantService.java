@@ -52,10 +52,12 @@ public class MerchantService {
 	}
 
 	public List<MerchantResponse> search(String keyword) {
-		List<Merchant> merchants = keyword == null || keyword.isBlank()
-				? merchantRepository.findAllByOrderByName()
-				: merchantRepository.findByNameContainingIgnoreCaseOrderByName(keyword);
-		return merchants.stream().map(MerchantResponse::from).toList();
+		if (keyword == null || keyword.isBlank()) {
+			return List.of();
+		}
+		String escaped = keyword.strip().replace("!", "!!").replace("%", "!%").replace("_", "!_");
+		return merchantRepository.searchByNameOrAlias("%" + escaped + "%").stream()
+				.map(MerchantResponse::from).toList();
 	}
 
 	/** 추천 입력 화면에서 다시 검색하지 않고 바로 고를 수 있게, 최근 결제한 곳을 최근 순으로 최대 3개 준다. */

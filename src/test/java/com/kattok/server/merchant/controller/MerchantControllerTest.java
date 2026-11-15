@@ -53,11 +53,11 @@ class MerchantControllerTest {
 	}
 
 	@Test
-	@DisplayName("키워드 없이 호출하면 전체 목록을 반환한다")
+	@DisplayName("키워드 없이 호출하면 빈 배열을 반환한다")
 	void searchWithoutKeyword() throws Exception {
 		mockMvc.perform(get("/api/v1/merchants"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(20)));
+				.andExpect(jsonPath("$.length()").value(0));
 	}
 
 	@Test

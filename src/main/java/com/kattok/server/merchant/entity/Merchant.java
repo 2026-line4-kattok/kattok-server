@@ -1,5 +1,8 @@
 package com.kattok.server.merchant.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -28,6 +31,11 @@ public class Merchant {
 
 	@Column(nullable = false)
 	private String name;
+
+	/** 검색용 별칭. 대표 이름·기존 ID는 그대로 유지한다. */
+	@JdbcTypeCode(SqlTypes.ARRAY)
+	@Column(nullable = false)
+	private String[] aliases = new String[0];
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
