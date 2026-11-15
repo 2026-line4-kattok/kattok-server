@@ -176,10 +176,13 @@ public class OwnedCardService {
 		boolean needsPerformance = (performanceType == PerformanceType.SINGLE || performanceType == PerformanceType.MULTIPLE)
 				&& status == PerformanceStatus.UNKNOWN;
 		StatusChip statusChip;
-		if (needsPerformance) {
-			statusChip = StatusChip.NEEDS_PERFORMANCE;
-		} else if (anyCapExhausted(userCard.getId(), applicableRules, rules.caps())) {
+		if (anyCapExhausted(userCard.getId(), applicableRules, rules.caps())) {
 			statusChip = StatusChip.LIMIT_EXHAUSTED;
+		} else if (needsPerformance) {
+			statusChip = StatusChip.NEEDS_PERFORMANCE;
+		} else if (performanceType == PerformanceType.NEEDS_CHECK) {
+			// 데이터 확인이 끝나지 않아 실적 조건 자체를 아직 모른다. "다 확인함"으로 안내하지 않는다.
+			statusChip = null;
 		} else {
 			statusChip = StatusChip.ALL_CONFIRMED;
 		}
