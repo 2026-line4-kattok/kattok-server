@@ -107,12 +107,11 @@ public class OwnedCardService {
 
 		YearMonth thisMonth = YearMonth.now(KST);
 		UserCardStateResponse state = userCardStateService.getState(userCardId, thisMonth);
-		ProductRules rules = productRulesReader.read(Set.of(product.getId()), LocalDate.now(KST)).get(product.getId());
-		List<OwnedCardDetailResponse.Benefit> benefits = rules == null
-				? List.of()
-				: rules.rules().stream()
-						.map(rule -> new OwnedCardDetailResponse.Benefit(rule.id(), rule.displayText(), true, rule.capGroupId()))
-						.toList();
+		List<OwnedCardDetailResponse.Benefit> benefits = productRulesReader.ruleUsages(product.getId(), LocalDate.now(KST))
+				.stream()
+				.map(rule -> new OwnedCardDetailResponse.Benefit(
+						rule.ruleId(), rule.displayText(), rule.usedInRecommendation(), rule.capGroupId()))
+				.toList();
 		var savedBenefit = paymentQueryService.history(thisMonth.toString(), userCardId).savedBenefit();
 
 		return new OwnedCardDetailResponse(

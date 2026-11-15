@@ -36,6 +36,9 @@ class OwnedCardDetailControllerTest {
 	@Autowired
 	private CardProductRepository cardProductRepository;
 
+	@Autowired
+	private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
 	@Test
 	@DisplayName("실적을 모르면 status는 UNKNOWN, tier는 null, caps는 실적 무관 한도 + 최소 혜택 구간 가정 한도다")
 	void detail_beforeConfirmation() throws Exception {
@@ -58,6 +61,29 @@ class OwnedCardDetailControllerTest {
 				.andExpect(jsonPath("$.benefits[0].usedInRecommendation").value(true))
 				.andExpect(jsonPath("$.savedBenefit.amount").value(0))
 				.andExpect(jsonPath("$.savedBenefit.paymentCount").value(0));
+	}
+
+	@Test
+	@DisplayName("미검증 혜택 규칙도 benefits에 나오지만 usedInRecommendation은 false다")
+	void detail_unverifiedRule_notUsedInRecommendation() throws Exception {
+		Long productId = starPlusProductId();
+		Long capGroupId = jdbc.queryForObject(
+				"select min(id) from benefit_cap_groups where product_id = ?", Long.class, productId);
+		Long categoryId = jdbc.queryForObject("select id from merchant_categories where code = 'CAFE'", Long.class);
+		Long unverifiedRuleId = jdbc.queryForObject("""
+				insert into benefit_rules (product_id, category_id, cap_group_id, benefit_type, rate, display_text,
+					source_ref, verification_status, rule_version, valid_from)
+				values (?, ?, ?, 'DISCOUNT_RATE', 0.05, '검증 전 혜택', '테스트', 'UNVERIFIED', 1, current_date)
+				returning id
+				""", Long.class, productId, categoryId, capGroupId);
+		Long userCardId = registerStarPlusWithUnknownPerformance();
+
+		mockMvc.perform(get("/api/v1/owned-cards/{id}", userCardId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.benefits[?(@.ruleId == %d)].usedInRecommendation".formatted(unverifiedRuleId))
+						.value(false))
+				.andExpect(jsonPath("$.benefits[?(@.ruleId != %d)].usedInRecommendation".formatted(unverifiedRuleId))
+						.value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(true))));
 	}
 
 	@Test

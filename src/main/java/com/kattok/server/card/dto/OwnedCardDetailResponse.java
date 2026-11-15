@@ -33,9 +33,10 @@ public record OwnedCardDetailResponse(
 	}
 
 	/**
-	 * @param usedInRecommendation 지금은 항상 {@code true}다. 검증된 혜택만 데이터에 있어서(미검증 규칙은
-	 *     아예 행이 없음) verification_status로는 구분이 안 생긴다. 나중에 실적 구간처럼 "지금 적용 대상인지"
-	 *     기준이 정해지면 그때 바꾼다.
+	 * 오늘 유효한 혜택 규칙 전체. 미검증 규칙도 포함한다.
+	 *
+	 * @param usedInRecommendation 추천 계산에 실제로 쓰이는 규칙인지(검증된 규칙이면서 카드가 비교 대상). {@code false}면 화면에서
+	 *     회색 "추천 미반영"으로 보여 준다. 사용자 실적·한도로 이번 결제에 적용되는지와는 별개다.
 	 */
 	public record Benefit(Long ruleId, String description, boolean usedInRecommendation, Long capGroupId) {
 	}
