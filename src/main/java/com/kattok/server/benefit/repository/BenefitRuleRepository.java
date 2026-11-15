@@ -22,4 +22,12 @@ public interface BenefitRuleRepository extends JpaRepository<BenefitRule, Long> 
 				and (r.validTo is null or r.validTo >= :date)
 			""")
 	List<BenefitRule> findCalculableRules(@Param("productIds") Collection<Long> productIds, @Param("date") LocalDate date);
+
+	/** 이 결제처 또는 이 업종을 대상으로 하는 검증된 혜택 규칙이 하나라도 있는지. 결제처 지원 여부 판단에 쓴다. */
+	@Query("""
+			select count(r) > 0 from BenefitRule r
+			where r.verificationStatus = com.kattok.server.benefit.entity.VerificationStatus.VERIFIED
+				and (r.merchant.id = :merchantId or r.category.id = :categoryId)
+			""")
+	boolean existsSupportedRule(@Param("merchantId") Long merchantId, @Param("categoryId") Long categoryId);
 }

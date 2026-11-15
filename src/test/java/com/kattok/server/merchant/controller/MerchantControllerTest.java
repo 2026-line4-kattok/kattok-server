@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.TestcontainersConfiguration;
 import com.kattok.server.merchant.entity.Merchant;
+import com.kattok.server.merchant.entity.MerchantCategory;
+import com.kattok.server.merchant.entity.MerchantChannel;
+import com.kattok.server.merchant.repository.MerchantCategoryRepository;
 import com.kattok.server.merchant.repository.MerchantRepository;
 import com.kattok.server.recommendation.entity.OverallStatus;
 import com.kattok.server.recommendation.entity.Recommendation;
@@ -37,6 +40,9 @@ class MerchantControllerTest {
 	private MerchantRepository merchantRepository;
 
 	@Autowired
+	private MerchantCategoryRepository merchantCategoryRepository;
+
+	@Autowired
 	private RecommendationRepository recommendationRepository;
 
 	@Autowired
@@ -49,7 +55,21 @@ class MerchantControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].name").value("스타벅스"))
 				.andExpect(jsonPath("$[0].channel").value("OFFLINE"))
-				.andExpect(jsonPath("$[0].category.name").value("커피전문점"));
+				.andExpect(jsonPath("$[0].category.name").value("커피전문점"))
+				.andExpect(jsonPath("$[0].supported").value(true))
+				.andExpect(jsonPath("$[0].unsupportedReason").doesNotExist());
+	}
+
+	@Test
+	@DisplayName("계산할 혜택 규칙이 없는 업종의 결제처는 supported가 false다")
+	void search_unsupportedMerchant_returnsFalse() throws Exception {
+		MerchantCategory category = merchantCategoryRepository.save(new MerchantCategory("테스트업종", "TEST_CATEGORY"));
+		merchantRepository.save(new Merchant("테스트결제처", MerchantChannel.OFFLINE, category));
+
+		mockMvc.perform(get("/api/v1/merchants").param("keyword", "테스트결제처"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].supported").value(false))
+				.andExpect(jsonPath("$[0].unsupportedReason").value("카똑이 아직 계산하지 않는 곳"));
 	}
 
 	@Test

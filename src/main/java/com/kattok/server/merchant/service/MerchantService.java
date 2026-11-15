@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kattok.server.benefit.service.ProductRulesReader;
 import com.kattok.server.global.ApiException;
 import com.kattok.server.merchant.dto.MerchantResponse;
 import com.kattok.server.merchant.dto.MerchantCategoryResponse;
@@ -38,6 +39,7 @@ public class MerchantService {
 	private final MerchantCategoryRepository merchantCategoryRepository;
 	private final RecentMerchantReader recentMerchantReader;
 	private final CurrentUserProvider currentUserProvider;
+	private final ProductRulesReader productRulesReader;
 
 	public List<MerchantCategoryResponse> categories() {
 		Map<String, MerchantCategory> categoriesByCode = merchantCategoryRepository
@@ -57,7 +59,12 @@ public class MerchantService {
 		}
 		String escaped = keyword.strip().replace("!", "!!").replace("%", "!%").replace("_", "!_");
 		return merchantRepository.searchByNameOrAlias("%" + escaped + "%").stream()
-				.map(MerchantResponse::from).toList();
+				.map(merchant -> MerchantResponse.of(merchant, isSupported(merchant)))
+				.toList();
+	}
+
+	private boolean isSupported(Merchant merchant) {
+		return productRulesReader.isSupported(merchant.getId(), merchant.getCategory().getId());
 	}
 
 	/** 추천 입력 화면에서 다시 검색하지 않고 바로 고를 수 있게, 최근 결제한 곳을 최근 순으로 최대 3개 준다. */
