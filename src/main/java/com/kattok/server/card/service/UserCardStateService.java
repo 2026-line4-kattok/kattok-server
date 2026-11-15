@@ -155,16 +155,16 @@ public class UserCardStateService {
 		CardPerformanceTier confirmedTier = state == null ? null : state.getPerformanceTier();
 		PerformanceTierOption performanceTier = confirmedTier == null ? null : toOption(confirmedTier);
 
-		List<CapStatus> caps = confirmedTier == null
-				? List.of()
-				: capsForTier(productId, confirmedTier.getId(), userCard.getId(), month, date);
+		List<CapStatus> caps = capsFor(
+				productId, confirmedTier == null ? null : confirmedTier.getId(), userCard.getId(), month, date);
 
 		return new UserCardStateResponse(
 				month.toString(), userCard.getProduct().getPerformanceType(), status, performanceTier, options, caps,
 				state == null ? null : state.getConfirmedAt());
 	}
 
-	private List<CapStatus> capsForTier(Long productId, Long confirmedTierId, Long userCardId, YearMonth month, LocalDate date) {
+	/** 실적 조건 없는 규칙의 한도는 실적 확정 여부와 무관하게 포함하고, tier별 규칙의 한도는 확정한 tier일 때만 포함한다. */
+	private List<CapStatus> capsFor(Long productId, Long confirmedTierId, Long userCardId, YearMonth month, LocalDate date) {
 		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
 		if (productRules == null) {
 			return List.of();
@@ -172,7 +172,7 @@ public class UserCardStateService {
 
 		Set<Long> relevantCapGroupIds = new LinkedHashSet<>();
 		for (Rule rule : productRules.rules()) {
-			if (confirmedTierId.equals(rule.requiredTierId())) {
+			if (rule.requiredTierId() == null || rule.requiredTierId().equals(confirmedTierId)) {
 				addWithParents(relevantCapGroupIds, rule.capGroupId(), productRules.caps());
 			}
 		}

@@ -19,11 +19,13 @@ import com.kattok.server.benefit.engine.ProductRules.Cap;
 import com.kattok.server.benefit.engine.ProductRules.Rule;
 import com.kattok.server.benefit.entity.CapPeriod;
 import com.kattok.server.benefit.service.ProductRulesReader;
+import com.kattok.server.card.dto.OwnedCardDetailResponse;
 import com.kattok.server.card.dto.OwnedCardResponse;
 import com.kattok.server.card.dto.PerformanceInput;
 import com.kattok.server.card.dto.PerformanceStatus;
 import com.kattok.server.card.dto.RegisterCardRequest;
 import com.kattok.server.card.dto.StatusChip;
+import com.kattok.server.card.dto.UserCardStateResponse;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.CardProduct;
 import com.kattok.server.card.entity.ConfirmationSource;
@@ -37,6 +39,7 @@ import com.kattok.server.card.repository.UserCardCapUsageRepository;
 import com.kattok.server.card.repository.UserCardRepository;
 import com.kattok.server.card.repository.UserCardStateRepository;
 import com.kattok.server.global.ApiException;
+import com.kattok.server.payment.service.PaymentQueryService;
 import com.kattok.server.user.entity.User;
 import com.kattok.server.user.service.CurrentUserProvider;
 
@@ -60,6 +63,8 @@ public class OwnedCardService {
 	private final UserMutationGuard mutationGuard;
 	private final ProductRulesReader productRulesReader;
 	private final PaymentCapLedger capLedger;
+	private final UserCardStateService userCardStateService;
+	private final PaymentQueryService paymentQueryService;
 
 	/** 추천 등 다른 도메인에서 보유 카드를 참조할 때 쓴다. 삭제한 카드는 빠지고, 등록 순서대로 준다. */
 	public List<UserCard> findActiveCards(Long userId) {
@@ -91,6 +96,36 @@ public class OwnedCardService {
 					return OwnedCardResponse.of(userCard, status, tier, extras.representativeBenefit(), extras.statusChip());
 				})
 				.toList();
+	}
+
+	/** 보유 카드 상세(3-2). */
+	public OwnedCardDetailResponse getDetail(Long userCardId) {
+		Long userId = currentUserProvider.get().getId();
+		UserCard userCard = userCardRepository.findByIdAndUserIdAndDeletedAtIsNull(userCardId, userId)
+				.orElseThrow(() -> ApiException.notFound("OWNED_CARD_NOT_FOUND", "존재하지 않는 카드입니다."));
+		CardProduct product = userCard.getProduct();
+
+		YearMonth thisMonth = YearMonth.now(KST);
+		UserCardStateResponse state = userCardStateService.getState(userCardId, thisMonth);
+		ProductRules rules = productRulesReader.read(Set.of(product.getId()), LocalDate.now(KST)).get(product.getId());
+		List<OwnedCardDetailResponse.Benefit> benefits = rules == null
+				? List.of()
+				: rules.rules().stream()
+						.map(rule -> new OwnedCardDetailResponse.Benefit(rule.id(), rule.displayText(), true, rule.capGroupId()))
+						.toList();
+		var savedBenefit = paymentQueryService.history(thisMonth.toString(), userCardId).savedBenefit();
+
+		return new OwnedCardDetailResponse(
+				userCard.getId(),
+				new OwnedCardDetailResponse.ProductDetail(
+						product.getId(), product.getName(), product.getIssuer().getName(), product.getCardType(),
+						product.getAnnualFee(), product.getPerformanceType()),
+				new OwnedCardDetailResponse.PerformanceDetail(
+						state.performanceStatus(), state.performanceTier(), state.performanceTierOptions(),
+						thisMonth.minusMonths(1).toString()),
+				benefits,
+				state.caps(),
+				savedBenefit);
 	}
 
 	@Transactional

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kattok.server.card.dto.OwnedCardDetailResponse;
 import com.kattok.server.card.dto.OwnedCardResponse;
 import com.kattok.server.card.dto.RegisterCardRequest;
 import com.kattok.server.card.service.OwnedCardService;
@@ -29,6 +30,11 @@ public class OwnedCardController {
 	@GetMapping
 	public List<OwnedCardResponse> findAll() {
 		return ownedCardService.findAll();
+	}
+
+	@GetMapping("/{id}")
+	public OwnedCardDetailResponse getDetail(@PathVariable Long id) {
+		return ownedCardService.getDetail(id);
 	}
 
 	@PostMapping
