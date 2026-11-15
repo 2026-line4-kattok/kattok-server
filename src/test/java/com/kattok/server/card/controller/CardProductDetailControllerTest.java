@@ -44,7 +44,7 @@ class CardProductDetailControllerTest {
 	}
 
 	@Test
-	@DisplayName("혜택 데이터를 검증하지 못한 상품은 performanceType이 NEEDS_CHECK다")
+	@DisplayName("혜택 데이터를 검증하지 못한 상품은 performanceType이 NEEDS_CHECK이고 실적 구간 선택지는 빈 배열이다")
 	void detail_needsCheck() throws Exception {
 		Long productId = cardProductRepository.findAll().stream()
 				.filter(product -> product.getDataStatus() != com.kattok.server.card.entity.DataStatus.CALCULABLE)
@@ -54,7 +54,8 @@ class CardProductDetailControllerTest {
 
 		mockMvc.perform(get("/api/v1/card-products/{id}", productId))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.performanceType").value("NEEDS_CHECK"));
+				.andExpect(jsonPath("$.performanceType").value("NEEDS_CHECK"))
+				.andExpect(jsonPath("$.performanceTiers.length()").value(0));
 	}
 
 	@Test

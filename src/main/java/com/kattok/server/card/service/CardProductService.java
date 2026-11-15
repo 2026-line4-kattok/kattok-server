@@ -3,15 +3,12 @@ package com.kattok.server.card.service;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.benefit.engine.ProductRules;
-import com.kattok.server.benefit.engine.ProductRules.Cap;
-import com.kattok.server.benefit.engine.ProductRules.Rule;
 import com.kattok.server.benefit.service.ProductRulesReader;
 import com.kattok.server.card.dto.CardProductDetailResponse;
 import com.kattok.server.card.dto.CardProductDetailResponse.BenefitSummary;
@@ -59,25 +56,9 @@ public class CardProductService {
 
 		List<CardPerformanceTier> tiers = cardPerformanceTierRepository.findByProductIdOrderByLevelAsc(productId);
 		ProductRules rules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
-		List<Rule> allRules = rules == null ? List.of() : rules.rules();
-		Map<Long, Cap> caps = rules == null ? Map.of() : rules.caps();
-
-		List<BenefitSummary> alwaysOnBenefits = allRules.stream()
-				.filter(rule -> rule.requiredTierId() == null)
-				.map(rule -> toBenefitSummary(rule, caps))
-				.toList();
-
-		List<PerformanceTierDetail> performanceTiers = tiers.stream()
-				.map(tier -> new PerformanceTierDetail(
-						tier.getId(),
-						tier.getLevel(),
-						tier.getMinAmount(),
-						tier.getLabel(),
-						allRules.stream()
-								.filter(rule -> tier.getId().equals(rule.requiredTierId()))
-								.map(rule -> toBenefitSummary(rule, caps))
-								.toList()))
-				.toList();
+		List<BenefitSummary> alwaysOnBenefits = TierBenefits.alwaysOnBenefits(rules);
+		List<PerformanceTierDetail> performanceTiers =
+				TierBenefits.tierOptions(product.getPerformanceType(), tiers, rules);
 
 		return new CardProductDetailResponse(
 				product.getId(),
@@ -94,12 +75,6 @@ public class CardProductService {
 
 	private Set<Long> ownedProductIds() {
 		return userCardRepository.findActiveProductIdsByUserId(currentUserProvider.get().getId());
-	}
-
-	private static BenefitSummary toBenefitSummary(Rule rule, Map<Long, Cap> caps) {
-		Cap cap = caps.get(rule.capGroupId());
-		return new BenefitSummary(
-				rule.displayText(), cap == null ? null : cap.capAmount(), cap == null ? null : cap.capCount());
 	}
 
 	private static String blankToNull(String value) {

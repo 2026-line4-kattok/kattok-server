@@ -198,9 +198,11 @@ public class OwnedCardService {
 			return new CardExtras(null, StatusChip.ALL_CONFIRMED);
 		}
 		Long confirmedTierId = tier == null ? null : tier.getId();
+		boolean tracksPerformance = TierBenefits.tracksPerformance(userCard.getProduct().getPerformanceType());
 		List<Rule> applicableRules = rules.rules().stream()
 				.filter(rule -> rule.requiredTierId() == null
-						|| (status == PerformanceStatus.CONFIRMED && rule.requiredTierId().equals(confirmedTierId)))
+						|| (tracksPerformance && status == PerformanceStatus.CONFIRMED
+								&& rule.requiredTierId().equals(confirmedTierId)))
 				.toList();
 
 		String representativeBenefit = applicableRules.stream()
