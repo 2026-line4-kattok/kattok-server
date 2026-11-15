@@ -36,6 +36,11 @@ public class ProductRulesReader {
 	private final BenefitRuleRepository benefitRuleRepository;
 	private final BenefitCapGroupRepository benefitCapGroupRepository;
 
+	/** 결제처 또는 업종을 대상으로 하는 검증된 혜택 규칙이 하나라도 있는지. merchant 도메인의 지원 여부 판단에 쓴다. */
+	public boolean isSupported(Long merchantId, Long categoryId) {
+		return benefitRuleRepository.existsSupportedRule(merchantId, categoryId);
+	}
+
 	/**
 	 * @param productIds 카드 상품 id
 	 * @param date 규칙 유효 기간을 판단할 날짜(한국 시간)
