@@ -50,11 +50,18 @@ public class AssumptionAnalyzer {
 	 */
 	public boolean affectsRank(
 			List<CardInput> cards, PaymentContext payment, Long userCardId, AssumptionType type, Long currentTop) {
+		return affectsRank(cards, payment, userCardId, type, null, currentTop);
+	}
+
+	/** 한도 ID가 있으면 질문의 해당 금액 또는 횟수만 바꾼다. 기존 카드 전체 분석은 그대로 유지한다. */
+	public boolean affectsRank(
+			List<CardInput> cards, PaymentContext payment, Long userCardId, AssumptionType type,
+			Long capGroupId, Long currentTop) {
 		CardInput target = cards.stream()
 				.filter(card -> card.snapshot().userCardId().equals(userCardId))
 				.findFirst()
 				.orElseThrow();
-		for (UserCardSnapshot alternative : alternatives(target, type)) {
+		for (UserCardSnapshot alternative : alternatives(target, type, capGroupId)) {
 			List<CardInput> replaced = new ArrayList<>(cards.size());
 			for (CardInput card : cards) {
 				replaced.add(card == target ? new CardInput(alternative, card.product()) : card);
@@ -67,7 +74,7 @@ public class AssumptionAnalyzer {
 		return false;
 	}
 
-	private static List<UserCardSnapshot> alternatives(CardInput card, AssumptionType type) {
+	private static List<UserCardSnapshot> alternatives(CardInput card, AssumptionType type, Long capGroupId) {
 		UserCardSnapshot snapshot = card.snapshot();
 		return switch (type) {
 			case PERFORMANCE_TIER -> {
@@ -78,8 +85,32 @@ public class AssumptionAnalyzer {
 				}
 				yield options;
 			}
-			case REMAINING_LIMIT, REMAINING_COUNT -> List.of(withUnknownLimitsExhausted(snapshot, card.product()));
+			case REMAINING_LIMIT, REMAINING_COUNT -> List.of(capGroupId == null
+					? withUnknownLimitsExhausted(snapshot, card.product())
+					: withTargetExhausted(snapshot, card.product(), type, capGroupId));
 		};
+	}
+
+	private static UserCardSnapshot withTargetExhausted(
+			UserCardSnapshot snapshot, ProductRules product, AssumptionType type, Long capGroupId) {
+		Cap cap = product.caps().get(capGroupId);
+		if (cap == null) {
+			throw new IllegalArgumentException("해당 상품의 한도가 아닙니다.");
+		}
+		Map<Long, CapState> caps = new HashMap<>(snapshot.caps());
+		CapState state = caps.get(capGroupId);
+		Long amount = state == null ? null : state.remainingAmount();
+		Integer count = state == null ? null : state.remainingCount();
+		if (type == AssumptionType.REMAINING_LIMIT && cap.capAmount() != null && amount == null) {
+			amount = 0L;
+		}
+		if (type == AssumptionType.REMAINING_COUNT && cap.capCount() != null && count == null) {
+			count = 0;
+		}
+		ConfirmationSource source = state == null ? ConfirmationSource.USER_CONFIRMED : state.source();
+		caps.put(capGroupId, new CapState(amount, count, source));
+		return new UserCardSnapshot(snapshot.userCardId(), snapshot.productId(), snapshot.registrationOrder(),
+				snapshot.performance(), caps);
 	}
 
 	private static UserCardSnapshot withUnknownPerformanceBelow(UserCardSnapshot snapshot) {

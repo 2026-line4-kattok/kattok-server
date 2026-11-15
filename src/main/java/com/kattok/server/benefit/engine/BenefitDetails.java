@@ -1,6 +1,9 @@
 package com.kattok.server.benefit.engine;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
@@ -8,6 +11,7 @@ import java.util.Set;
 import com.kattok.server.benefit.engine.CardBenefitResult.LimitSource;
 import com.kattok.server.benefit.engine.ProductRules.Cap;
 import com.kattok.server.benefit.engine.ProductRules.Rule;
+import com.kattok.server.benefit.entity.CapPeriod;
 import com.kattok.server.card.dto.CapState;
 import com.kattok.server.card.dto.UserCardSnapshot;
 import com.kattok.server.card.entity.ConfirmationSource;
@@ -52,6 +56,85 @@ public final class BenefitDetails {
 		REMAINING_LIMIT,
 		/** 남은 횟수를 몰라 전체 횟수로 가정 */
 		REMAINING_COUNT
+	}
+
+	/** 실제 상태 변경 없이 한도 하나의 결제 전·후 예상값과 근거를 보관한다. */
+	public record CapProjection(
+			Long capGroupId, String description, CapPeriod capPeriod, Long capAmount, Integer capCount,
+			Long remainingLimitBefore, Long remainingLimitAmount, Integer remainingCountBefore, Integer remainingCount,
+			LimitSource amountSource, LimitSource countSource) {
+	}
+
+	/** 실적은 카드 단위, 한도·횟수는 한도 그룹 단위 질문이다. */
+	public record AssumptionTarget(AssumptionType type, Long capGroupId) {
+	}
+
+	/** 적용 혜택의 한도부터 상위 한도까지. 순환·없는 참조는 안전하게 종료한다. */
+	public static List<Long> capGroupIds(Rule rule, ProductRules product) {
+		List<Long> ids = new ArrayList<>();
+		Set<Long> visited = new HashSet<>();
+		Long id = rule.capGroupId();
+		while (id != null && visited.add(id)) {
+			Cap cap = product.caps().get(id);
+			if (cap == null) {
+				break;
+			}
+			ids.add(id);
+			id = cap.parentId();
+		}
+		return List.copyOf(ids);
+	}
+
+	/** 현재 적용된 단일 혜택을 기준으로 금액·횟수의 예상 잔여값을 각각 만든다. */
+	public static List<CapProjection> remainingLimitsAfter(
+			Rule rule, ProductRules product, UserCardSnapshot card, long expectedBenefit) {
+		List<CapProjection> result = new ArrayList<>();
+		for (Long id : capGroupIds(rule, product)) {
+			Cap cap = product.caps().get(id);
+			if (!cap.limitsAmount() && !cap.limitsCount()) {
+				continue;
+			}
+			CapState state = card.caps().get(id);
+			Long amount = state == null ? null : state.remainingAmount();
+			Integer count = state == null ? null : state.remainingCount();
+			Long beforeAmount = cap.limitsAmount() ? (amount == null ? cap.capAmount() : amount) : null;
+			Integer beforeCount = cap.limitsCount() ? (count == null ? cap.capCount() : count) : null;
+			LimitSource amountSource = !cap.limitsAmount() ? null : amount == null ? LimitSource.ASSUMED : sourceOf(state);
+			LimitSource countSource = !cap.limitsCount() ? null : count == null ? LimitSource.ASSUMED : sourceOf(state);
+			result.add(new CapProjection(id, cap.description(), cap.capPeriod(), cap.capAmount(), cap.capCount(),
+					beforeAmount, beforeAmount == null ? null : Math.max(0, beforeAmount - expectedBenefit),
+					beforeCount, beforeCount == null ? null : Math.max(0, beforeCount - (expectedBenefit > 0 ? 1 : 0)),
+					amountSource, countSource));
+		}
+		return List.copyOf(result);
+	}
+
+	public static List<AssumptionTarget> assumptionTargets(
+			CardBenefitResult result, Rule rule, ProductRules product, UserCardSnapshot card) {
+		Set<AssumptionType> types = assumptionTypes(result, rule, product, card);
+		List<AssumptionTarget> targets = new ArrayList<>();
+		if (types.contains(AssumptionType.PERFORMANCE_TIER)) {
+			targets.add(new AssumptionTarget(AssumptionType.PERFORMANCE_TIER, null));
+		}
+		for (Long id : capGroupIds(rule, product)) {
+			Cap cap = product.caps().get(id);
+			CapState state = card.caps().get(id);
+			if (types.contains(AssumptionType.REMAINING_LIMIT) && cap.limitsAmount()
+					&& (state == null || state.remainingAmount() == null)) {
+				targets.add(new AssumptionTarget(AssumptionType.REMAINING_LIMIT, id));
+			}
+			if (types.contains(AssumptionType.REMAINING_COUNT) && cap.limitsCount()
+					&& (state == null || state.remainingCount() == null)) {
+				targets.add(new AssumptionTarget(AssumptionType.REMAINING_COUNT, id));
+			}
+		}
+		targets.sort(Comparator.comparing(AssumptionTarget::type)
+				.thenComparing(AssumptionTarget::capGroupId, Comparator.nullsFirst(Comparator.naturalOrder())));
+		return List.copyOf(targets);
+	}
+
+	private static LimitSource sourceOf(CapState state) {
+		return state.source() == ConfirmationSource.USER_CONFIRMED ? LimitSource.USER_INPUT : LimitSource.ESTIMATED;
 	}
 
 	public static Calculation calculation(Rule rule, long amount, long expectedBenefit) {

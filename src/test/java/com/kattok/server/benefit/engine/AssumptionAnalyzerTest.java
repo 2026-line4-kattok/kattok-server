@@ -91,6 +91,21 @@ class AssumptionAnalyzerTest {
 		assertThat(analyzer.confirmedOnlyTop(cards, PAYMENT)).isEqualTo(2L);
 	}
 
+	@Test
+	@DisplayName("가정 영향은 지정한 한도와 필드만 바꿔 판정한다")
+	void targetedLimitOnly() {
+		// 한 카드에 카페 10%와 독립적인 6% 혜택. 10% 한도를 0으로 둬도 6%로 여전히 1위다.
+		CardInput card = new CardInput(
+				new UserCardSnapshot(1L, 1L, 1, PerformanceState.unknown(), Map.of()),
+				new ProductRules(1L, true, 0L,
+						List.of(rule(1L, null, 10L, "0.10"), rule(3L, null, 30L, "0.06")), Map.of(),
+						Map.of(10L, new Cap(10L, 5000L, null, null), 30L, new Cap(30L, 5000L, null, null))));
+		List<CardInput> cards = List.of(card, flatCard);
+		assertThat(analyzer.affectsRank(cards, PAYMENT, 1L, AssumptionType.REMAINING_LIMIT, 10L, 1L)).isFalse();
+		// 예전 카드 전체 가정 분석은 두 한도를 모두 0으로 두므로 결과가 다르다.
+		assertThat(analyzer.affectsRank(cards, PAYMENT, 1L, AssumptionType.REMAINING_LIMIT, 1L)).isTrue();
+	}
+
 	private static Rule rule(long id, Long requiredTierId, long capGroupId, String rate) {
 		return new Rule(id, null, CAFE, requiredTierId, capGroupId, BenefitType.DISCOUNT_RATE, new BigDecimal(rate),
 				null, null, null, null, RuleConditions.NONE, "카페 할인");
