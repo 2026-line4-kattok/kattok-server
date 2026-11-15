@@ -85,7 +85,21 @@ class OwnedCardRegisterControllerTest {
 								.formatted(productId, tierId)))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.performanceStatus").value("CONFIRMED"))
-				.andExpect(jsonPath("$.performanceTier.id").value(tierId));
+				.andExpect(jsonPath("$.performanceTier.id").value(tierId))
+				.andExpect(jsonPath("$.statusChip").value("ALL_CONFIRMED"))
+				.andExpect(jsonPath("$.representativeBenefit").isNotEmpty());
+	}
+
+	@Test
+	@DisplayName("실적 조건이 있는데 모른다고 등록하면 statusChip은 NEEDS_PERFORMANCE다")
+	void register_unknownPerformance_needsPerformanceChip() throws Exception {
+		Long productId = starPlusProductId();
+
+		mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d, \"performance\": {\"status\": \"UNKNOWN\"}}".formatted(productId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.statusChip").value("NEEDS_PERFORMANCE"));
 	}
 
 	@Test
