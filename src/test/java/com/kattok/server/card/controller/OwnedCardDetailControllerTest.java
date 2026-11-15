@@ -52,7 +52,10 @@ class OwnedCardDetailControllerTest {
 				.andExpect(jsonPath("$.performance.options[0].label").value("20만원 이상"))
 				.andExpect(jsonPath("$.performance.baseMonth").value(expectedBaseMonth))
 				.andExpect(jsonPath("$.caps").isArray())
-				.andExpect(jsonPath("$.caps.length()").value(0));
+				.andExpect(jsonPath("$.caps.length()").value(0))
+				.andExpect(jsonPath("$.benefits[0].usedInRecommendation").value(true))
+				.andExpect(jsonPath("$.savedBenefit.amount").value(0))
+				.andExpect(jsonPath("$.savedBenefit.paymentCount").value(0));
 	}
 
 	@Test

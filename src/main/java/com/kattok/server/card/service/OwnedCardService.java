@@ -39,6 +39,7 @@ import com.kattok.server.card.repository.UserCardCapUsageRepository;
 import com.kattok.server.card.repository.UserCardRepository;
 import com.kattok.server.card.repository.UserCardStateRepository;
 import com.kattok.server.global.ApiException;
+import com.kattok.server.payment.service.PaymentQueryService;
 import com.kattok.server.user.entity.User;
 import com.kattok.server.user.service.CurrentUserProvider;
 
@@ -63,6 +64,7 @@ public class OwnedCardService {
 	private final ProductRulesReader productRulesReader;
 	private final PaymentCapLedger capLedger;
 	private final UserCardStateService userCardStateService;
+	private final PaymentQueryService paymentQueryService;
 
 	/** 추천 등 다른 도메인에서 보유 카드를 참조할 때 쓴다. 삭제한 카드는 빠지고, 등록 순서대로 준다. */
 	public List<UserCard> findActiveCards(Long userId) {
@@ -96,10 +98,7 @@ public class OwnedCardService {
 				.toList();
 	}
 
-	/**
-	 * 보유 카드 상세(3-2). {@code product}/{@code performance}/{@code caps}만 준다. {@code benefits}(추천
-	 * 반영 여부 기준 없음)와 {@code savedBenefit}(이번 달/전체 기간 기준 결정 대기)은 아직 넣지 않는다.
-	 */
+	/** 보유 카드 상세(3-2). */
 	public OwnedCardDetailResponse getDetail(Long userCardId) {
 		Long userId = currentUserProvider.get().getId();
 		UserCard userCard = userCardRepository.findByIdAndUserIdAndDeletedAtIsNull(userCardId, userId)
@@ -108,6 +107,13 @@ public class OwnedCardService {
 
 		YearMonth thisMonth = YearMonth.now(KST);
 		UserCardStateResponse state = userCardStateService.getState(userCardId, thisMonth);
+		ProductRules rules = productRulesReader.read(Set.of(product.getId()), LocalDate.now(KST)).get(product.getId());
+		List<OwnedCardDetailResponse.Benefit> benefits = rules == null
+				? List.of()
+				: rules.rules().stream()
+						.map(rule -> new OwnedCardDetailResponse.Benefit(rule.id(), rule.displayText(), true, rule.capGroupId()))
+						.toList();
+		var savedBenefit = paymentQueryService.history(thisMonth.toString(), userCardId).savedBenefit();
 
 		return new OwnedCardDetailResponse(
 				userCard.getId(),
@@ -117,7 +123,9 @@ public class OwnedCardService {
 				new OwnedCardDetailResponse.PerformanceDetail(
 						state.performanceStatus(), state.performanceTier(), state.performanceTierOptions(),
 						thisMonth.minusMonths(1).toString()),
-				state.caps());
+				benefits,
+				state.caps(),
+				savedBenefit);
 	}
 
 	@Transactional

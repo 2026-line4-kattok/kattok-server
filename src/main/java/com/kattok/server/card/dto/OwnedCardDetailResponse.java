@@ -4,17 +4,16 @@ import java.util.List;
 
 import com.kattok.server.card.entity.CardType;
 import com.kattok.server.card.entity.PerformanceType;
+import com.kattok.server.payment.dto.PaymentResponses;
 
-/**
- * 보유 카드 상세(3-2). {@code product}/{@code performance}/{@code caps}는 명확히 정의된 부분만 담는다.
- * 명세의 {@code benefits}(추천 반영 여부 판단 기준 없음)와 {@code savedBenefit}(이번 달/전체 기간 기준이
- * 기획에서 아직 결정 대기, 7장 참고)은 기준이 정해지기 전까지 이 응답에 넣지 않는다.
- */
+/** 보유 카드 상세(3-2). */
 public record OwnedCardDetailResponse(
 		Long id,
 		ProductDetail product,
 		PerformanceDetail performance,
-		List<UserCardStateResponse.CapStatus> caps) {
+		List<Benefit> benefits,
+		List<UserCardStateResponse.CapStatus> caps,
+		PaymentResponses.SavedBenefit savedBenefit) {
 
 	public record ProductDetail(
 			Long id, String name, String issuerName, CardType cardType, Long annualFee,
@@ -31,5 +30,13 @@ public record OwnedCardDetailResponse(
 			UserCardStateResponse.PerformanceTierOption tier,
 			List<UserCardStateResponse.PerformanceTierOption> options,
 			String baseMonth) {
+	}
+
+	/**
+	 * @param usedInRecommendation 지금은 항상 {@code true}다. 검증된 혜택만 데이터에 있어서(미검증 규칙은
+	 *     아예 행이 없음) verification_status로는 구분이 안 생긴다. 나중에 실적 구간처럼 "지금 적용 대상인지"
+	 *     기준이 정해지면 그때 바꾼다.
+	 */
+	public record Benefit(Long ruleId, String description, boolean usedInRecommendation, Long capGroupId) {
 	}
 }
