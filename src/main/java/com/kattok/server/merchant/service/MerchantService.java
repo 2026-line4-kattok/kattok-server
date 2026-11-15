@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.global.ApiException;
 import com.kattok.server.merchant.dto.MerchantResponse;
+import com.kattok.server.merchant.dto.MerchantCategoryResponse;
 import com.kattok.server.merchant.entity.Merchant;
 import com.kattok.server.merchant.entity.MerchantCategory;
 import com.kattok.server.merchant.repository.MerchantCategoryRepository;
@@ -28,10 +29,27 @@ public class MerchantService {
 	/** 결제처 검색 화면의 "최근 결제한 곳" 칩 개수(기획 확정값). */
 	private static final int RECENT_MERCHANT_LIMIT = 3;
 
+	/** 명세의 업종 칩 표시 순서. DB ID·이름순에 의존하지 않는다. */
+	private static final List<String> CATEGORY_DISPLAY_ORDER = List.of(
+			"CONVENIENCE_STORE", "CAFE", "RESTAURANT", "MART",
+			"ONLINE_SHOPPING", "PHARMACY", "TAXI", "DEPARTMENT_STORE");
+
 	private final MerchantRepository merchantRepository;
 	private final MerchantCategoryRepository merchantCategoryRepository;
 	private final RecentMerchantReader recentMerchantReader;
 	private final CurrentUserProvider currentUserProvider;
+
+	public List<MerchantCategoryResponse> categories() {
+		Map<String, MerchantCategory> categoriesByCode = merchantCategoryRepository
+				.findByCodeIn(CATEGORY_DISPLAY_ORDER).stream()
+				.collect(Collectors.toMap(MerchantCategory::getCode, Function.identity()));
+		return CATEGORY_DISPLAY_ORDER.stream()
+				.map(categoriesByCode::get)
+				.filter(Objects::nonNull)
+				.map(category -> new MerchantCategoryResponse(category.getId(),
+						category.getCode().equals("CAFE") ? "카페" : category.getName()))
+				.toList();
+	}
 
 	public List<MerchantResponse> search(String keyword) {
 		List<Merchant> merchants = keyword == null || keyword.isBlank()
