@@ -14,10 +14,13 @@ public record OwnedCardResponse(
 		ProductSummary product,
 		PerformanceStatus performanceStatus,
 		PerformanceTierSummary performanceTier,
+		String representativeBenefit,
+		StatusChip statusChip,
 		Instant createdAt) {
 
 	public static OwnedCardResponse of(
-			UserCard userCard, PerformanceStatus performanceStatus, CardPerformanceTier performanceTier) {
+			UserCard userCard, PerformanceStatus performanceStatus, CardPerformanceTier performanceTier,
+			String representativeBenefit, StatusChip statusChip) {
 		CardProduct product = userCard.getProduct();
 		return new OwnedCardResponse(
 				userCard.getId(),
@@ -26,6 +29,8 @@ public record OwnedCardResponse(
 						product.getDataStatus(), product.getPerformanceType()),
 				performanceStatus,
 				performanceTier == null ? null : new PerformanceTierSummary(performanceTier.getId(), performanceTier.getLabel()),
+				representativeBenefit,
+				statusChip,
 				userCard.getCreatedAt());
 	}
 
