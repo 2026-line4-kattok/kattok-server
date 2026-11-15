@@ -11,11 +11,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.card.dto.OwnedCardResponse;
+import com.kattok.server.card.dto.PerformanceInput;
 import com.kattok.server.card.dto.PerformanceStatus;
 import com.kattok.server.card.dto.RegisterCardRequest;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.CardProduct;
 import com.kattok.server.card.entity.ConfirmationSource;
+import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.entity.UserCard;
 import com.kattok.server.card.entity.UserCardState;
 import com.kattok.server.card.repository.CardPerformanceTierRepository;
@@ -81,6 +83,7 @@ public class OwnedCardService {
 		if (userCardRepository.findActiveProductIdsByUserId(user.getId()).contains(product.getId())) {
 			throw ApiException.conflict("CARD_ALREADY_REGISTERED", "이미 등록한 카드입니다.");
 		}
+		validatePerformanceRequired(product.getPerformanceType(), request.performance());
 
 		PerformanceStatus status = PerformanceStatus.UNKNOWN;
 		CardPerformanceTier tier = null;
@@ -114,6 +117,17 @@ public class OwnedCardService {
 		}
 		if (status != PerformanceStatus.CONFIRMED && tierId != null) {
 			throw ApiException.invalidInput("%s 상태에는 실적 구간 id를 보내지 않습니다.".formatted(status));
+		}
+	}
+
+	/** 실적 유형이 SINGLE·MULTIPLE이면 performance가 필수이고, NONE·NEEDS_CHECK면 보낼 수 없다. */
+	private static void validatePerformanceRequired(PerformanceType type, PerformanceInput performance) {
+		boolean requiresPerformance = type == PerformanceType.SINGLE || type == PerformanceType.MULTIPLE;
+		if (requiresPerformance && performance == null) {
+			throw ApiException.invalidInput("이 카드는 지난달 실적을 입력해야 합니다.");
+		}
+		if (!requiresPerformance && performance != null) {
+			throw ApiException.invalidInput("이 카드는 실적을 입력할 수 없습니다.");
 		}
 	}
 

@@ -86,6 +86,7 @@ public class CardProductService {
 				product.getCardType(),
 				product.getAnnualFee(),
 				product.getDataStatus(),
+				product.getPerformanceType(),
 				ownedProductIds().contains(productId),
 				alwaysOnBenefits,
 				performanceTiers);

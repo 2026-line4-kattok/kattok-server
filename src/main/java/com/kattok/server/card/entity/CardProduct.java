@@ -59,6 +59,11 @@ public class CardProduct {
 	@Column(name = "data_status", nullable = false)
 	private DataStatus dataStatus;
 
+	/** 실적 조건을 어떤 방식으로 가지는지. 혜택 데이터를 아직 검증 못한 상품은 NEEDS_CHECK다. */
+	@Enumerated(EnumType.STRING)
+	@Column(name = "performance_type", nullable = false)
+	private PerformanceType performanceType;
+
 	/** 공식 상품 자료 링크 */
 	@Column(name = "source_url")
 	private String sourceUrl;
@@ -89,7 +94,8 @@ public class CardProduct {
 			DataStatus dataStatus,
 			String sourceUrl,
 			String imageFileName,
-			Long annualFee) {
+			Long annualFee,
+			PerformanceType performanceType) {
 		this.issuer = issuer;
 		this.productKey = productKey;
 		this.name = name;
@@ -100,5 +106,6 @@ public class CardProduct {
 		this.sourceUrl = sourceUrl;
 		this.imageFileName = imageFileName;
 		this.annualFee = annualFee;
+		this.performanceType = performanceType;
 	}
 }

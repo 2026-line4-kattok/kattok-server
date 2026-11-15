@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kattok.server.TestcontainersConfiguration;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.CardProduct;
+import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.repository.CardPerformanceTierRepository;
 import com.kattok.server.card.repository.CardProductRepository;
 
@@ -36,9 +37,9 @@ class OwnedCardRegisterControllerTest {
 	private CardPerformanceTierRepository cardPerformanceTierRepository;
 
 	@Test
-	@DisplayName("실적 구간 없이 등록하면 performanceStatus는 UNKNOWN, performanceTier는 null인 채로 201을 반환한다")
+	@DisplayName("실적 조건이 없는 카드는 실적 없이 등록하면 performanceStatus는 UNKNOWN, performanceTier는 null인 채로 201을 반환한다")
 	void register_withoutTier() throws Exception {
-		Long productId = starPlusProductId();
+		Long productId = noPerformanceRequiredProductId();
 
 		mockMvc.perform(post("/api/v1/owned-cards")
 						.contentType(MediaType.APPLICATION_JSON)
@@ -46,6 +47,30 @@ class OwnedCardRegisterControllerTest {
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.performanceStatus").value("UNKNOWN"))
 				.andExpect(jsonPath("$.performanceTier").doesNotExist());
+	}
+
+	@Test
+	@DisplayName("실적 구간이 있는 카드를 실적 없이 등록하면 400을 반환한다")
+	void register_requiresPerformance_returns400() throws Exception {
+		Long productId = starPlusProductId();
+
+		mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d}".formatted(productId)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	@DisplayName("실적 조건이 없는 카드에 실적을 보내면 400을 반환한다")
+	void register_performanceNotAllowed_returns400() throws Exception {
+		Long productId = noPerformanceRequiredProductId();
+
+		mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d, \"performance\": {\"status\": \"UNKNOWN\"}}".formatted(productId)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 	}
 
 	@Test
@@ -121,7 +146,7 @@ class OwnedCardRegisterControllerTest {
 	@Test
 	@DisplayName("이미 등록한 카드를 다시 등록하면 409를 반환한다")
 	void register_alreadyRegistered() throws Exception {
-		Long productId = starPlusProductId();
+		Long productId = noPerformanceRequiredProductId();
 		String body = "{\"productId\": %d}".formatted(productId);
 
 		mockMvc.perform(post("/api/v1/owned-cards").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -133,6 +158,15 @@ class OwnedCardRegisterControllerTest {
 
 	private Long starPlusProductId() {
 		return cardProductRepository.search(null, "스타플러스", null).stream().findFirst().orElseThrow().getId();
+	}
+
+	private Long noPerformanceRequiredProductId() {
+		return cardProductRepository.findAll().stream()
+				.filter(product -> product.getPerformanceType() == PerformanceType.NONE
+						|| product.getPerformanceType() == PerformanceType.NEEDS_CHECK)
+				.findFirst()
+				.orElseThrow()
+				.getId();
 	}
 
 	private Long firstTierId(Long productId) {

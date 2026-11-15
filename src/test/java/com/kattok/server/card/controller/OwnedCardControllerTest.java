@@ -49,6 +49,7 @@ class OwnedCardControllerTest {
 		mockMvc.perform(get("/api/v1/owned-cards"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].product.name").isNotEmpty())
+				.andExpect(jsonPath("$[0].product.performanceType").exists())
 				.andExpect(jsonPath("$[0].performanceTier").doesNotExist())
 				.andExpect(jsonPath("$[0].createdAt").value(matchesPattern(".*\\+09:00")));
 	}

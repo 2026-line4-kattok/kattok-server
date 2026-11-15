@@ -14,6 +14,7 @@ import com.kattok.server.card.entity.CardIssuer;
 import com.kattok.server.card.entity.CardProduct;
 import com.kattok.server.card.entity.CardType;
 import com.kattok.server.card.entity.DataStatus;
+import com.kattok.server.card.entity.PerformanceType;
 
 import jakarta.persistence.EntityManager;
 
@@ -34,7 +35,7 @@ class CardProductRepositoryTest {
 		CardIssuer issuer = anyExistingIssuer();
 		cardProductRepository.save(new CardProduct(
 				issuer, "TEST-ALIAS-001", "신한카드 Mr.Life", new String[] {"미스터라이프", "미스타 라이프"},
-				CardType.CREDIT, null, DataStatus.UNVERIFIED, null, null, null));
+				CardType.CREDIT, null, DataStatus.UNVERIFIED, null, null, null, PerformanceType.NEEDS_CHECK));
 
 		var result = cardProductRepository.search(null, "미스터라이프", null);
 
@@ -47,7 +48,7 @@ class CardProductRepositoryTest {
 		CardIssuer issuer = anyExistingIssuer();
 		cardProductRepository.save(new CardProduct(
 				issuer, "TEST-ALIAS-002", "신한카드 Mr.Life", new String[] {"미스터라이프"},
-				CardType.CREDIT, null, DataStatus.UNVERIFIED, null, null, null));
+				CardType.CREDIT, null, DataStatus.UNVERIFIED, null, null, null, PerformanceType.NEEDS_CHECK));
 
 		var result = cardProductRepository.search(null, "전혀다른이름", null);
 
