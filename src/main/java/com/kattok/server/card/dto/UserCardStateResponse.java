@@ -4,9 +4,11 @@ import java.time.Instant;
 import java.util.List;
 
 import com.kattok.server.benefit.entity.CapPeriod;
+import com.kattok.server.card.entity.PerformanceType;
 
 public record UserCardStateResponse(
 		String month,
+		PerformanceType performanceType,
 		PerformanceStatus performanceStatus,
 		PerformanceTierOption performanceTier,
 		List<PerformanceTierOption> performanceTierOptions,

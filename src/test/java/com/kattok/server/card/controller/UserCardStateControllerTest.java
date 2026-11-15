@@ -43,21 +43,60 @@ class UserCardStateControllerTest {
 	private CardPerformanceTierRepository cardPerformanceTierRepository;
 
 	@Test
-	@DisplayName("실적 구간을 확인한 적 없으면 상태는 UNKNOWN, performanceTier는 null, caps는 빈 배열이다")
+	@DisplayName("실적 구간을 확인한 적 없어도 실적 조건 없는 혜택의 한도는 caps에 나온다")
 	void getState_beforeConfirmation() throws Exception {
 		Long userCardId = registerStarPlus();
 
 		mockMvc.perform(get("/api/v1/owned-cards/{id}/state", userCardId).param("month", MONTH))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.performanceType").value("SINGLE"))
 				.andExpect(jsonPath("$.performanceStatus").value("UNKNOWN"))
 				.andExpect(jsonPath("$.performanceTier").doesNotExist())
 				.andExpect(jsonPath("$.caps").isArray())
-				.andExpect(jsonPath("$.caps.length()").value(0))
+				.andExpect(jsonPath("$.caps.length()").value(1))
+				.andExpect(jsonPath("$.caps[0].capAmount").value(3000))
 				.andExpect(jsonPath("$.performanceTierOptions[0].label").value("20만원 이상"));
 	}
 
 	@Test
-	@DisplayName("실적 구간을 확정하면 그 구간에 해당하는 한도가 caps에 나온다")
+	@DisplayName("performance에 명시적으로 null을 보내면 400을 반환한다")
+	void putState_explicitNullPerformance_returns400() throws Exception {
+		Long userCardId = registerStarPlus();
+
+		mockMvc.perform(putStateRequest(userCardId, "{\"month\": \"%s\", \"performance\": null}".formatted(MONTH)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	@DisplayName("caps에 명시적으로 null을 보내면 400을 반환한다")
+	void putState_explicitNullCaps_returns400() throws Exception {
+		Long userCardId = registerStarPlus();
+
+		mockMvc.perform(putStateRequest(userCardId, "{\"month\": \"%s\", \"caps\": null}".formatted(MONTH)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	@DisplayName("caps에 같은 capGroupId를 중복해서 보내면 400을 반환한다")
+	void putState_duplicateCapGroupId_returns400() throws Exception {
+		Long userCardId = registerStarPlus();
+		Long tierId = convenienceTierId();
+		setTier(userCardId, tierId);
+		Long capGroupId = capGroupIdFor(userCardId);
+
+		mockMvc.perform(putStateRequest(userCardId,
+						("{\"month\": \"%s\", \"caps\": ["
+								+ "{\"capGroupId\": %d, \"remainingLimitAmount\": 1000}, "
+								+ "{\"capGroupId\": %d, \"remainingLimitAmount\": 2000}]}")
+								.formatted(MONTH, capGroupId, capGroupId)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	@DisplayName("실적 구간을 확정하면 그 구간에 해당하는 한도도 실적 무관 한도와 함께 caps에 나온다")
 	void putState_setsTier() throws Exception {
 		Long userCardId = registerStarPlus();
 		Long tierId = convenienceTierId();
@@ -66,12 +105,12 @@ class UserCardStateControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.performanceStatus").value("CONFIRMED"))
 				.andExpect(jsonPath("$.performanceTier.id").value(tierId))
-				.andExpect(jsonPath("$.caps[0].capAmount").value(2000))
-				.andExpect(jsonPath("$.caps[0].remainingLimitAmount").doesNotExist());
+				.andExpect(jsonPath("$.caps.length()").value(2))
+				.andExpect(jsonPath("$.caps[?(@.capAmount == 2000)][0].remainingLimitAmount").doesNotExist());
 	}
 
 	@Test
-	@DisplayName("실적을 확인했지만 최저 구간도 못 채웠으면 BELOW로 저장되고 caps는 빈 배열이다")
+	@DisplayName("실적을 확인했지만 최저 구간도 못 채웠어도 실적 조건 없는 혜택의 한도는 caps에 나온다")
 	void putState_setsBelow() throws Exception {
 		Long userCardId = registerStarPlus();
 
@@ -80,7 +119,8 @@ class UserCardStateControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.performanceStatus").value("BELOW"))
 				.andExpect(jsonPath("$.performanceTier").doesNotExist())
-				.andExpect(jsonPath("$.caps.length()").value(0));
+				.andExpect(jsonPath("$.caps.length()").value(1))
+				.andExpect(jsonPath("$.caps[0].capAmount").value(3000));
 	}
 
 	@Test
@@ -200,19 +240,18 @@ class UserCardStateControllerTest {
 				.findFirst().orElseThrow().getId();
 		String response = mockMvc.perform(post("/api/v1/owned-cards")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"productId\": %d}".formatted(productId)))
+						.content("{\"productId\": %d, \"performance\": {\"status\": \"UNKNOWN\"}}".formatted(productId)))
 				.andReturn().getResponse().getContentAsString();
 		return ((Number) JsonPath.read(response, "$.id")).longValue();
 	}
 
 	private void registerAnotherProduct() throws Exception {
-		Long starPlusId = cardProductRepository.search(null, "스타플러스", null).stream()
-				.findFirst().orElseThrow().getId();
 		Long productId = cardProductRepository.findAll().stream()
-				.map(com.kattok.server.card.entity.CardProduct::getId)
-				.filter(id -> !id.equals(starPlusId))
+				.filter(product -> product.getPerformanceType() == com.kattok.server.card.entity.PerformanceType.NONE
+						|| product.getPerformanceType() == com.kattok.server.card.entity.PerformanceType.NEEDS_CHECK)
 				.findFirst()
-				.orElseThrow();
+				.orElseThrow()
+				.getId();
 		mockMvc.perform(post("/api/v1/owned-cards")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"productId\": %d}".formatted(productId)));

@@ -62,11 +62,19 @@ public class UserCardStateController {
 	private UpdateCardStateRequest toUpdateRequest(JsonNode body) {
 		YearMonth month = parseRequiredMonth(body.get("month"));
 		try {
-			PerformanceInput performance = body.hasNonNull("performance")
-					? jsonMapper.treeToValue(body.get("performance"), PerformanceInput.class)
-					: null;
+			PerformanceInput performance = null;
+			if (body.has("performance")) {
+				if (body.get("performance").isNull()) {
+					throw ApiException.invalidInput(
+							"performance에 null을 보낼 수 없습니다. 미확인으로 바꾸려면 {\"status\": \"UNKNOWN\"}을 보내세요.");
+				}
+				performance = jsonMapper.treeToValue(body.get("performance"), PerformanceInput.class);
+			}
 			List<CapUpdate> caps = null;
-			if (body.hasNonNull("caps")) {
+			if (body.has("caps")) {
+				if (body.get("caps").isNull()) {
+					throw ApiException.invalidInput("caps에 null을 보낼 수 없습니다.");
+				}
 				if (!body.get("caps").isArray()) throw ApiException.invalidInput("caps는 배열이어야 합니다.");
 				caps = new ArrayList<>();
 				for (JsonNode node : body.get("caps")) {

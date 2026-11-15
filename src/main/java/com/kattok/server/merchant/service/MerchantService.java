@@ -16,7 +16,8 @@ import com.kattok.server.merchant.entity.Merchant;
 import com.kattok.server.merchant.entity.MerchantCategory;
 import com.kattok.server.merchant.repository.MerchantCategoryRepository;
 import com.kattok.server.merchant.repository.MerchantRepository;
-import com.kattok.server.recommendation.service.RecentMerchantReader;
+import com.kattok.server.payment.service.RecentMerchantReader;
+import com.kattok.server.merchant.dto.RecentMerchantResponse;
 import com.kattok.server.user.service.CurrentUserProvider;
 
 import lombok.RequiredArgsConstructor;
@@ -61,19 +62,18 @@ public class MerchantService {
 	}
 
 	/** 추천 입력 화면에서 다시 검색하지 않고 바로 고를 수 있게, 최근 결제한 곳을 최근 순으로 최대 3개 준다. */
-	public List<MerchantResponse> recent() {
+	public List<RecentMerchantResponse> recent() {
 		Long userId = currentUserProvider.get().getId();
-		List<Long> merchantIds = recentMerchantReader.recentMerchantIds(userId, RECENT_MERCHANT_LIMIT);
-		if (merchantIds.isEmpty()) {
+		var recent = recentMerchantReader.recentMerchants(userId, RECENT_MERCHANT_LIMIT);
+		if (recent.isEmpty()) {
 			return List.of();
 		}
 
-		Map<Long, Merchant> merchantsById = merchantRepository.findAllById(merchantIds).stream()
+		Map<Long, Merchant> merchantsById = merchantRepository.findAllById(recent.stream().map(row -> row.merchantId()).toList()).stream()
 				.collect(Collectors.toMap(Merchant::getId, Function.identity()));
-		return merchantIds.stream()
-				.map(merchantsById::get)
-				.filter(Objects::nonNull)
-				.map(MerchantResponse::from)
+		return recent.stream()
+				.filter(row -> merchantsById.containsKey(row.merchantId()))
+				.map(row -> RecentMerchantResponse.from(merchantsById.get(row.merchantId()), row.lastRecommendedAt()))
 				.toList();
 	}
 

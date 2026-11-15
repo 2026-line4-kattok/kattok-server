@@ -36,10 +36,25 @@ class CardProductDetailControllerTest {
 		mockMvc.perform(get("/api/v1/card-products/{id}", starPlusId))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(starPlusId))
+				.andExpect(jsonPath("$.performanceType").value("SINGLE"))
 				.andExpect(jsonPath("$.alwaysOnBenefits[0].displayText").value(org.hamcrest.Matchers.containsString("커피")))
 				.andExpect(jsonPath("$.performanceTiers[0].label").value("20만원 이상"))
 				.andExpect(jsonPath("$.performanceTiers[0].benefits[0].displayText")
 						.value(org.hamcrest.Matchers.containsString("GS25")));
+	}
+
+	@Test
+	@DisplayName("혜택 데이터를 검증하지 못한 상품은 performanceType이 NEEDS_CHECK다")
+	void detail_needsCheck() throws Exception {
+		Long productId = cardProductRepository.findAll().stream()
+				.filter(product -> product.getDataStatus() != com.kattok.server.card.entity.DataStatus.CALCULABLE)
+				.findFirst()
+				.orElseThrow()
+				.getId();
+
+		mockMvc.perform(get("/api/v1/card-products/{id}", productId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.performanceType").value("NEEDS_CHECK"));
 	}
 
 	@Test
