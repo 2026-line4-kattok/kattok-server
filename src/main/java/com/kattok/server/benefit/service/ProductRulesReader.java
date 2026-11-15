@@ -24,6 +24,7 @@ import com.kattok.server.benefit.repository.BenefitRuleRepository;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.CardProduct;
 import com.kattok.server.card.entity.DataStatus;
+import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.repository.CardProductRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -67,7 +68,7 @@ public class ProductRulesReader {
 			List<BenefitCapGroup> caps = capsByProduct.getOrDefault(product.getId(), List.of());
 			result.put(product.getId(), new ProductRules(
 					product.getId(),
-					isCalculable(product.getDataStatus()),
+					isCalculable(product),
 					product.getAnnualFee(),
 					rules.stream().map(ProductRulesReader::toRule).toList(),
 					tiersOf(rules),
@@ -85,7 +86,7 @@ public class ProductRulesReader {
 		if (product == null) {
 			return List.of();
 		}
-		boolean comparable = isCalculable(product.getDataStatus());
+		boolean comparable = isCalculable(product);
 		return benefitRuleRepository.findValidRules(productId, date).stream()
 				.map(rule -> new RuleUsage(rule.getId(), rule.getDisplayText(), rule.getCapGroup().getId(),
 						comparable && rule.getVerificationStatus() == VerificationStatus.VERIFIED))
@@ -95,9 +96,14 @@ public class ProductRulesReader {
 	public record RuleUsage(Long ruleId, String displayText, Long capGroupId, boolean usedInRecommendation) {
 	}
 
-	/** 일부 혜택만 검증된(PARTIAL) 카드도 검증된 규칙으로 비교한다. 혜택 미검증(UNVERIFIED) 카드만 비교에서 뺀다. */
-	private static boolean isCalculable(DataStatus status) {
-		return status == DataStatus.CALCULABLE || status == DataStatus.PARTIAL;
+	/**
+	 * 추천 비교 대상인지. 일부 혜택만 검증된(PARTIAL) 카드도 검증된 규칙으로 비교한다. 혜택 미검증(UNVERIFIED) 카드와 실적 구간
+	 * 정보를 확인 중인(NEEDS_CHECK) 카드는 비교에서 뺀다.
+	 */
+	private static boolean isCalculable(CardProduct product) {
+		DataStatus status = product.getDataStatus();
+		return (status == DataStatus.CALCULABLE || status == DataStatus.PARTIAL)
+				&& product.getPerformanceType() != PerformanceType.NEEDS_CHECK;
 	}
 
 	private static Rule toRule(BenefitRule rule) {

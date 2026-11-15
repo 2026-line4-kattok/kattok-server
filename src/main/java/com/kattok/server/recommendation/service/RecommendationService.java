@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ import com.kattok.server.benefit.engine.ProductRules.Rule;
 import com.kattok.server.benefit.engine.RecommendationResult;
 import com.kattok.server.benefit.service.ProductRulesReader;
 import com.kattok.server.card.dto.UserCardSnapshot;
+import com.kattok.server.card.entity.DataStatus;
 import com.kattok.server.card.entity.UserCard;
 import com.kattok.server.card.service.OwnedCardService;
 import com.kattok.server.card.service.UserCardStateReader;
@@ -97,6 +99,9 @@ public class RecommendationService {
 		MerchantCategory category = merchant != null
 				? merchant.getCategory()
 				: merchantService.getCategory(request.categoryId());
+		if (merchant != null && !productRulesReader.isSupported(merchant.getId(), category.getId())) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "MERCHANT_NOT_SUPPORTED", "카똑이 아직 계산하지 않는 결제처입니다.");
+		}
 
 		LocalDateTime now = LocalDateTime.now(KST);
 		List<UserCardSnapshot> snapshots = userCardStateReader.findForRecommendation(user.getId(), now.toLocalDate());
@@ -266,10 +271,16 @@ public class RecommendationService {
 				Map.of());
 	}
 
+	/** 혜택 미검증이 우선이다. 혜택은 검증됐지만 실적 구간 정보를 확인 중인 카드만 PERFORMANCE_NEEDS_CHECK다. */
 	private RecommendationItem excludedItem(Recommendation recommendation, UserCard userCard) {
 		Map<String, Object> reason = new LinkedHashMap<>();
-		reason.put("type", "UNVERIFIED_CARD");
-		reason.put("message", "아직 계산 준비 중이라 비교에서 빠졌어요");
+		if (userCard.getProduct().getDataStatus() == DataStatus.UNVERIFIED) {
+			reason.put("type", "UNVERIFIED_CARD");
+			reason.put("message", "아직 계산 준비 중이라 비교에서 빠졌어요");
+		} else {
+			reason.put("type", "PERFORMANCE_NEEDS_CHECK");
+			reason.put("message", "실적 구간 정보를 확인하고 있어 비교에서 빠졌어요");
+		}
 		return new RecommendationItem(
 				recommendation,
 				userCard,

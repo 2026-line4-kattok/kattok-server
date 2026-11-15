@@ -288,7 +288,7 @@ class PaymentConfirmationTest {
 		UserCard card = cards.findById(f.cardId()).orElseThrow();
 		var uncapped = caps.saveAndFlush(new BenefitCapGroup(card.getProduct(),CapPeriod.MONTHLY,null,null,null,"무한도"));
 		var merchant = merchants.findByNameContainingIgnoreCaseOrderByName("스타벅스").getFirst();
-		jdbc.update("update card_products set data_status='CALCULABLE' where id=?",card.getProduct().getId());
+		jdbc.update("update card_products set data_status='CALCULABLE',performance_type='NONE' where id=?",card.getProduct().getId());
 		jdbc.update("update benefit_rules set valid_to='2020-01-01' where product_id=?",card.getProduct().getId());
 		jdbc.update("""
 			insert into benefit_rules(product_id,merchant_id,cap_group_id,benefit_type,amount,conditions,
