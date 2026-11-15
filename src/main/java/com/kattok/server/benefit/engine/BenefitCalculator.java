@@ -151,7 +151,7 @@ public class BenefitCalculator {
 					assumptions.add(Assumption.LIMIT_ASSUMED_FULL);
 					limitSource = worse(limitSource, LimitSource.ASSUMED);
 				} else {
-					limitSource = worse(limitSource, sourceOf(state));
+					limitSource = worse(limitSource, sourceOf(state.countSource()));
 					if (remainingCount <= 0) {
 						benefit = 0;
 						limited = true;
@@ -165,7 +165,7 @@ public class BenefitCalculator {
 					assumptions.add(Assumption.LIMIT_ASSUMED_FULL);
 					limitSource = worse(limitSource, LimitSource.ASSUMED);
 				} else {
-					limitSource = worse(limitSource, sourceOf(state));
+					limitSource = worse(limitSource, sourceOf(state.amountSource()));
 				}
 				if (remaining < benefit) {
 					benefit = Math.max(0, remaining);
@@ -194,8 +194,8 @@ public class BenefitCalculator {
 		return benefit.setScale(0, RoundingMode.DOWN).longValueExact();
 	}
 
-	private static LimitSource sourceOf(CapState state) {
-		return state.source() == ConfirmationSource.USER_CONFIRMED ? LimitSource.USER_INPUT : LimitSource.ESTIMATED;
+	private static LimitSource sourceOf(ConfirmationSource source) {
+		return source == ConfirmationSource.USER_CONFIRMED ? LimitSource.USER_INPUT : LimitSource.ESTIMATED;
 	}
 
 	private static LimitSource worse(LimitSource current, LimitSource next) {

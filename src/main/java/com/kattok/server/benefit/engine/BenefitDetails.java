@@ -99,8 +99,8 @@ public final class BenefitDetails {
 			Integer count = state == null ? null : state.remainingCount();
 			Long beforeAmount = cap.limitsAmount() ? (amount == null ? cap.capAmount() : amount) : null;
 			Integer beforeCount = cap.limitsCount() ? (count == null ? cap.capCount() : count) : null;
-			LimitSource amountSource = !cap.limitsAmount() ? null : amount == null ? LimitSource.ASSUMED : sourceOf(state);
-			LimitSource countSource = !cap.limitsCount() ? null : count == null ? LimitSource.ASSUMED : sourceOf(state);
+			LimitSource amountSource = !cap.limitsAmount() ? null : amount == null ? LimitSource.ASSUMED : sourceOf(state.amountSource());
+			LimitSource countSource = !cap.limitsCount() ? null : count == null ? LimitSource.ASSUMED : sourceOf(state.countSource());
 			result.add(new CapProjection(id, cap.description(), cap.capPeriod(), cap.capAmount(), cap.capCount(),
 					beforeAmount, beforeAmount == null ? null : Math.max(0, beforeAmount - expectedBenefit),
 					beforeCount, beforeCount == null ? null : Math.max(0, beforeCount - (expectedBenefit > 0 ? 1 : 0)),
@@ -133,8 +133,8 @@ public final class BenefitDetails {
 		return List.copyOf(targets);
 	}
 
-	private static LimitSource sourceOf(CapState state) {
-		return state.source() == ConfirmationSource.USER_CONFIRMED ? LimitSource.USER_INPUT : LimitSource.ESTIMATED;
+	private static LimitSource sourceOf(ConfirmationSource source) {
+		return source == ConfirmationSource.USER_CONFIRMED ? LimitSource.USER_INPUT : LimitSource.ESTIMATED;
 	}
 
 	public static Calculation calculation(Rule rule, long amount, long expectedBenefit) {
@@ -174,7 +174,7 @@ public final class BenefitDetails {
 					capSource = LimitSource.ASSUMED;
 				} else {
 					remaining = state.remainingAmount();
-					capSource = state.source() == ConfirmationSource.USER_CONFIRMED
+					capSource = state.amountSource() == ConfirmationSource.USER_CONFIRMED
 							? LimitSource.USER_INPUT
 							: LimitSource.ESTIMATED;
 				}

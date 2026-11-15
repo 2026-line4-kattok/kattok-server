@@ -26,6 +26,8 @@ import com.kattok.server.global.ApiException;
 import com.kattok.server.user.entity.User;
 import com.kattok.server.user.service.CurrentUserProvider;
 
+import com.kattok.server.user.service.UserMutationGuard;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -40,6 +42,7 @@ public class OwnedCardService {
 	private final CardProductRepository cardProductRepository;
 	private final CardPerformanceTierRepository cardPerformanceTierRepository;
 	private final CurrentUserProvider currentUserProvider;
+	private final UserMutationGuard mutationGuard;
 
 	/** 추천 등 다른 도메인에서 보유 카드를 참조할 때 쓴다. 삭제한 카드는 빠지고, 등록 순서대로 준다. */
 	public List<UserCard> findActiveCards(Long userId) {
@@ -118,6 +121,7 @@ public class OwnedCardService {
 	@Transactional
 	public void delete(Long userCardId) {
 		Long userId = currentUserProvider.get().getId();
+		mutationGuard.lock(userId);
 		UserCard userCard = userCardRepository.findByIdAndUserId(userCardId, userId)
 				.orElseThrow(() -> ApiException.notFound("OWNED_CARD_NOT_FOUND", "존재하지 않는 카드입니다."));
 		if (userCard.getDeletedAt() == null && userCardRepository.countByUserIdAndDeletedAtIsNull(userId) <= 1) {

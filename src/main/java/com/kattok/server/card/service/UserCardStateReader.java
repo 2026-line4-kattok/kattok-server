@@ -1,6 +1,7 @@
 package com.kattok.server.card.service;
 
 import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 
 import com.kattok.server.card.dto.UserCardSnapshot;
@@ -24,4 +25,8 @@ public interface UserCardStateReader {
 	 * @return 보유 카드가 없으면 빈 목록
 	 */
 	List<UserCardSnapshot> findForRecommendation(Long userId, YearMonth period);
+
+	default List<UserCardSnapshot> findForRecommendation(Long userId, LocalDate date) {
+		return findForRecommendation(userId, YearMonth.from(date));
+	}
 }

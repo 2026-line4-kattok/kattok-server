@@ -53,6 +53,8 @@ import com.kattok.server.recommendation.repository.RecommendationRepository;
 import com.kattok.server.user.entity.User;
 import com.kattok.server.user.service.CurrentUserProvider;
 
+import com.kattok.server.user.service.UserMutationGuard;
+
 import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -73,6 +75,7 @@ public class RecommendationService {
 	private final AssumptionAnalyzer analyzer = new AssumptionAnalyzer(engine);
 
 	private final CurrentUserProvider currentUserProvider;
+	private final UserMutationGuard mutationGuard;
 	private final MerchantService merchantService;
 	private final OwnedCardService ownedCardService;
 	private final UserCardStateReader userCardStateReader;
@@ -89,13 +92,14 @@ public class RecommendationService {
 			throw ApiException.invalidInput("결제처와 업종 중 하나만 골라 주세요.");
 		}
 		User user = currentUserProvider.get();
+		mutationGuard.lock(user.getId());
 		Merchant merchant = request.merchantId() == null ? null : merchantService.getMerchant(request.merchantId());
 		MerchantCategory category = merchant != null
 				? merchant.getCategory()
 				: merchantService.getCategory(request.categoryId());
 
 		LocalDateTime now = LocalDateTime.now(KST);
-		List<UserCardSnapshot> snapshots = userCardStateReader.findForRecommendation(user.getId(), YearMonth.from(now));
+		List<UserCardSnapshot> snapshots = userCardStateReader.findForRecommendation(user.getId(), now.toLocalDate());
 		if (snapshots.isEmpty()) {
 			throw ApiException.conflict("NO_OWNED_CARDS", "등록된 카드가 없습니다.");
 		}
@@ -154,6 +158,7 @@ public class RecommendationService {
 	@Transactional
 	public void confirm(Long recommendationId) {
 		Long userId = currentUserProvider.get().getId();
+		mutationGuard.lock(userId);
 		Recommendation recommendation = recommendationRepository.findWithLockByIdAndUserId(recommendationId, userId)
 				.orElseThrow(RecommendationService::recommendationNotFound);
 		if (!recommendation.hasRecommendedCard()) {
@@ -237,6 +242,10 @@ public class RecommendationService {
 		applied.put("calculation", toJson(calculation));
 		applied.put("remainingLimitAfter", toJson(remainingLimitAfter));
 		applied.put("remainingLimitsAfter", toJson(remainingLimitsAfter));
+		// 응답 형식은 유지하고 무한도 그룹과 예전 스냅샷의 정보 누락을 결제 확인에서 구분한다.
+		applied.put("uncappedCapGroupIds", rule == null ? List.of() : BenefitDetails.capGroupIds(rule, input.product()).stream()
+				.filter(id -> input.product().caps().get(id).capAmount() == null && input.product().caps().get(id).capCount() == null)
+				.toList());
 		applied.put("noBenefitReason", noBenefitMessage(card.noBenefitReason(), categoryBasis));
 
 		Map<String, Object> unknown = new LinkedHashMap<>();

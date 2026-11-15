@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.benefit.engine.ProductRules;
+import com.kattok.server.benefit.entity.CapPeriod;
 import com.kattok.server.benefit.engine.ProductRules.Cap;
 import com.kattok.server.benefit.engine.ProductRules.Rule;
 import com.kattok.server.benefit.service.ProductRulesReader;
@@ -34,6 +35,8 @@ import com.kattok.server.card.repository.UserCardStateRepository;
 import com.kattok.server.global.ApiException;
 import com.kattok.server.user.service.CurrentUserProvider;
 
+import com.kattok.server.user.service.UserMutationGuard;
+
 import lombok.RequiredArgsConstructor;
 
 /** 보유 카드 한 장의 특정 월 실적 구간·한도 상태를 조회·수정한다. */
@@ -50,9 +53,16 @@ public class UserCardStateService {
 	private final CardPerformanceTierRepository cardPerformanceTierRepository;
 	private final ProductRulesReader productRulesReader;
 	private final CurrentUserProvider currentUserProvider;
+	private final UserMutationGuard mutationGuard;
+	private final PaymentCapLedger capLedger;
 
 	public UserCardStateResponse getState(Long userCardId, YearMonth month) {
-		return buildResponse(findOwnedCard(userCardId), month);
+		return getState(userCardId, month, null);
+	}
+
+	public UserCardStateResponse getState(Long userCardId, YearMonth month, LocalDate date) {
+		if (date != null && !YearMonth.from(date).equals(month)) throw ApiException.invalidInput("date는 조회 월에 속해야 합니다.");
+		return buildResponse(findOwnedCard(userCardId), month, date);
 	}
 
 	/**
@@ -61,6 +71,7 @@ public class UserCardStateService {
 	 */
 	@Transactional
 	public UserCardStateResponse updateState(Long userCardId, UpdateCardStateRequest request) {
+		mutationGuard.lock(currentUserProvider.get().getId());
 		UserCard userCard = findOwnedCard(userCardId);
 		Long productId = userCard.getProduct().getId();
 		LocalDate monthStart = request.month().atDay(1);
@@ -81,14 +92,22 @@ public class UserCardStateService {
 					throw ApiException.invalidInput("해당 카드의 한도가 아닙니다.");
 				}
 				validateWithinCap(cap, capUpdate);
-				userCardCapUsageRepository.upsert(
-						userCard.getId(), capUpdate.capGroupId(), monthStart,
-						capUpdate.remainingLimitAmount(), capUpdate.remainingCount(),
-						ConfirmationSource.USER_CONFIRMED.name(), Instant.now());
+				LocalDate periodStart = capUpdate.periodStart();
+				if (cap.capPeriod() == CapPeriod.DAILY && periodStart == null)
+					throw ApiException.invalidInput("일 한도 수정에는 periodStart 날짜가 필요합니다.");
+				LocalDate expected = PaymentCapLedger.period(cap.capPeriod(), periodStart == null ? monthStart : periodStart);
+				if (periodStart != null && !periodStart.equals(expected)
+						|| cap.capPeriod() == CapPeriod.DAILY && !YearMonth.from(expected).equals(request.month())
+						|| cap.capPeriod() == CapPeriod.MONTHLY && !expected.equals(monthStart)
+						|| cap.capPeriod() == CapPeriod.YEARLY && expected.getYear() != monthStart.getYear())
+					throw ApiException.invalidInput("한도 기간이 요청 월과 일치하지 않습니다.");
+				capLedger.manual(userCard.getId(), cap.id(), cap.capPeriod(), expected, cap.description(),
+						cap.capAmount() != null, cap.capCount() != null, capUpdate.amountProvided(),
+						capUpdate.remainingLimitAmount(), capUpdate.countProvided(), capUpdate.remainingCount());
 			}
 		}
 
-		return buildResponse(userCard, request.month());
+		return buildResponse(userCard, request.month(), null);
 	}
 
 	private UserCard findOwnedCard(Long userCardId) {
@@ -115,7 +134,7 @@ public class UserCardStateService {
 		}
 	}
 
-	private UserCardStateResponse buildResponse(UserCard userCard, YearMonth month) {
+	private UserCardStateResponse buildResponse(UserCard userCard, YearMonth month, LocalDate date) {
 		Long productId = userCard.getProduct().getId();
 
 		List<PerformanceTierOption> options = cardPerformanceTierRepository
@@ -131,14 +150,14 @@ public class UserCardStateService {
 
 		List<CapStatus> caps = confirmedTier == null
 				? List.of()
-				: capsForTier(productId, confirmedTier.getId(), userCard.getId(), month);
+				: capsForTier(productId, confirmedTier.getId(), userCard.getId(), month, date);
 
 		return new UserCardStateResponse(
 				month.toString(), status, performanceTier, options, caps,
 				state == null ? null : state.getConfirmedAt());
 	}
 
-	private List<CapStatus> capsForTier(Long productId, Long confirmedTierId, Long userCardId, YearMonth month) {
+	private List<CapStatus> capsForTier(Long productId, Long confirmedTierId, Long userCardId, YearMonth month, LocalDate date) {
 		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
 		if (productRules == null) {
 			return List.of();
@@ -155,9 +174,13 @@ public class UserCardStateService {
 				.findByUserCardIdAndPeriodMonth(userCardId, month).stream()
 				.collect(Collectors.toMap(usage -> usage.getCapGroup().getId(), usage -> usage));
 
-		return relevantCapGroupIds.stream()
-				.map(capGroupId -> toCapStatus(productRules.caps().get(capGroupId), usageByCapGroupId.get(capGroupId)))
-				.toList();
+		LocalDate reference = date != null ? date : month.equals(YearMonth.now(KST)) ? LocalDate.now(KST) : month.atDay(1);
+		boolean dailyDateKnown = date != null || month.equals(YearMonth.now(KST));
+		Map<Long, PaymentCapLedger.Balance> balances = capLedger.read(userCardId, reference).stream()
+				.filter(balance -> balance.period() != CapPeriod.DAILY || dailyDateKnown)
+				.collect(Collectors.toMap(PaymentCapLedger.Balance::capId, balance -> balance));
+		return relevantCapGroupIds.stream().map(id -> toCapStatus(productRules.caps().get(id),
+				usageByCapGroupId.get(id), balances.get(id), reference, dailyDateKnown)).toList();
 	}
 
 	private Map<Long, Cap> capsOf(Long productId) {
@@ -175,11 +198,11 @@ public class UserCardStateService {
 
 	private static void validateWithinCap(Cap cap, UpdateCardStateRequest.CapUpdate capUpdate) {
 		Long amount = capUpdate.remainingLimitAmount();
-		if (amount != null && (amount < 0 || (cap.capAmount() != null && amount > cap.capAmount()))) {
+		if (amount != null && (amount < 0 || cap.capAmount() == null || amount > cap.capAmount())) {
 			throw ApiException.invalidInput("잔여 한도가 올바르지 않습니다.");
 		}
 		Integer count = capUpdate.remainingCount();
-		if (count != null && (count < 0 || (cap.capCount() != null && count > cap.capCount()))) {
+		if (count != null && (count < 0 || cap.capCount() == null || count > cap.capCount())) {
 			throw ApiException.invalidInput("잔여 횟수가 올바르지 않습니다.");
 		}
 	}
@@ -188,11 +211,17 @@ public class UserCardStateService {
 		return new PerformanceTierOption(tier.getId(), tier.getLevel(), tier.getLabel(), tier.getMinAmount());
 	}
 
-	private static CapStatus toCapStatus(Cap cap, UserCardCapUsage usage) {
-		return new CapStatus(
-				cap.id(), cap.description(), cap.capPeriod(), cap.capAmount(),
-				usage == null ? null : usage.getRemainingLimitAmount(),
-				usage == null ? null : usage.getRemainingCount(),
-				usage == null ? null : usage.getConfirmedAt());
+	private static CapStatus toCapStatus(Cap cap, UserCardCapUsage usage, PaymentCapLedger.Balance balance,
+			LocalDate reference, boolean dailyDateKnown) {
+		if (cap.capPeriod() != CapPeriod.MONTHLY) usage = null;
+		Long amount = balance != null ? balance.amount() : usage == null ? null : usage.getRemainingLimitAmount();
+		Integer count = balance != null ? balance.count() : usage == null ? null : usage.getRemainingCount();
+		String source = usage != null && usage.getSource() == ConfirmationSource.USER_CONFIRMED ? "USER_INPUT" : "ESTIMATED";
+		return new CapStatus(cap.id(), cap.description(), cap.capPeriod(), cap.capAmount(),
+				cap.capAmount() == null ? null : amount, cap.capCount() == null ? null : count,
+				usage == null ? null : usage.getConfirmedAt(),
+				cap.capAmount() == null ? null : balance != null ? balance.amountSource() : amount == null ? "UNKNOWN" : source,
+				cap.capCount() == null ? null : balance != null ? balance.countSource() : count == null ? "UNKNOWN" : source,
+				cap.capPeriod() == CapPeriod.DAILY && !dailyDateKnown ? null : PaymentCapLedger.period(cap.capPeriod(), reference));
 	}
 }
