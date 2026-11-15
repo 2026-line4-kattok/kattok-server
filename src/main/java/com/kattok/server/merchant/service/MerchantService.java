@@ -10,13 +10,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.global.ApiException;
-import com.kattok.server.merchant.dto.MerchantResponse;
 import com.kattok.server.merchant.dto.MerchantCategoryResponse;
+import com.kattok.server.merchant.dto.MerchantResponse;
+import com.kattok.server.merchant.dto.RecentMerchantResponse;
 import com.kattok.server.merchant.entity.Merchant;
 import com.kattok.server.merchant.entity.MerchantCategory;
 import com.kattok.server.merchant.repository.MerchantCategoryRepository;
 import com.kattok.server.merchant.repository.MerchantRepository;
 import com.kattok.server.recommendation.service.RecentMerchantReader;
+import com.kattok.server.recommendation.service.RecentMerchantReader.RecentMerchant;
 import com.kattok.server.user.service.CurrentUserProvider;
 
 import lombok.RequiredArgsConstructor;
@@ -61,19 +63,19 @@ public class MerchantService {
 	}
 
 	/** 추천 입력 화면에서 다시 검색하지 않고 바로 고를 수 있게, 최근 결제한 곳을 최근 순으로 최대 3개 준다. */
-	public List<MerchantResponse> recent() {
+	public List<RecentMerchantResponse> recent() {
 		Long userId = currentUserProvider.get().getId();
-		List<Long> merchantIds = recentMerchantReader.recentMerchantIds(userId, RECENT_MERCHANT_LIMIT);
-		if (merchantIds.isEmpty()) {
+		List<RecentMerchant> recentMerchants = recentMerchantReader.recentMerchants(userId, RECENT_MERCHANT_LIMIT);
+		if (recentMerchants.isEmpty()) {
 			return List.of();
 		}
 
-		Map<Long, Merchant> merchantsById = merchantRepository.findAllById(merchantIds).stream()
+		Map<Long, Merchant> merchantsById = merchantRepository
+				.findAllById(recentMerchants.stream().map(RecentMerchant::merchantId).toList()).stream()
 				.collect(Collectors.toMap(Merchant::getId, Function.identity()));
-		return merchantIds.stream()
-				.map(merchantsById::get)
-				.filter(Objects::nonNull)
-				.map(MerchantResponse::from)
+		return recentMerchants.stream()
+				.filter(recent -> merchantsById.containsKey(recent.merchantId()))
+				.map(recent -> RecentMerchantResponse.of(merchantsById.get(recent.merchantId()), recent.lastRecommendedAt()))
 				.toList();
 	}
 

@@ -1,5 +1,6 @@
 package com.kattok.server.recommendation.service;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -15,5 +16,9 @@ public interface RecentMerchantReader {
 	 *
 	 * @return 최근 사용 순. 확정한 추천이 없으면 빈 목록
 	 */
-	List<Long> recentMerchantIds(Long userId, int limit);
+	List<RecentMerchant> recentMerchants(Long userId, int limit);
+
+	/** @param lastRecommendedAt 이 결제처의 대상 기록 중 가장 최근 추천(확정) 시각 */
+	record RecentMerchant(Long merchantId, Instant lastRecommendedAt) {
+	}
 }
