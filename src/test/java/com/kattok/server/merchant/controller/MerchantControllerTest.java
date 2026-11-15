@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +54,9 @@ class MerchantControllerTest {
 	@Autowired
 	private PaymentRecordRepository paymentRecordRepository;
 
+	@Autowired
+	private JdbcTemplate jdbc;
+
 	@Test
 	@DisplayName("키워드로 검색하면 이름·채널·업종을 담아 반환한다")
 	void searchByKeyword() throws Exception {
@@ -72,6 +76,19 @@ class MerchantControllerTest {
 		merchantRepository.save(new Merchant("테스트결제처", MerchantChannel.OFFLINE, category));
 
 		mockMvc.perform(get("/api/v1/merchants").param("keyword", "테스트결제처"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].supported").value(false))
+				.andExpect(jsonPath("$[0].unsupportedReason").value("카똑이 아직 계산하지 않는 곳"));
+	}
+
+	@Test
+	@DisplayName("혜택 규칙이 있어도 유효 기간이 지났으면 supported가 false다")
+	void search_expiredRules_returnsFalse() throws Exception {
+		Merchant starbucks = merchantByKeyword("스타벅스");
+		jdbc.update("update benefit_rules set valid_to = current_date - 1 where merchant_id = ? or category_id = ?",
+				starbucks.getId(), starbucks.getCategory().getId());
+
+		mockMvc.perform(get("/api/v1/merchants").param("keyword", "스타벅스"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].supported").value(false))
 				.andExpect(jsonPath("$[0].unsupportedReason").value("카똑이 아직 계산하지 않는 곳"));

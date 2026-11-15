@@ -1,6 +1,7 @@
 package com.kattok.server.benefit.service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -32,13 +33,15 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class ProductRulesReader {
 
+	private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
 	private final CardProductRepository cardProductRepository;
 	private final BenefitRuleRepository benefitRuleRepository;
 	private final BenefitCapGroupRepository benefitCapGroupRepository;
 
-	/** 결제처 또는 업종을 대상으로 하는 검증된 혜택 규칙이 하나라도 있는지. merchant 도메인의 지원 여부 판단에 쓴다. */
+	/** 결제처 또는 업종을 대상으로 하는, 오늘(KST) 유효한 검증된 혜택 규칙이 하나라도 있는지. merchant 도메인의 지원 여부 판단에 쓴다. */
 	public boolean isSupported(Long merchantId, Long categoryId) {
-		return benefitRuleRepository.existsSupportedRule(merchantId, categoryId);
+		return benefitRuleRepository.existsSupportedRule(merchantId, categoryId, LocalDate.now(KST));
 	}
 
 	/**
