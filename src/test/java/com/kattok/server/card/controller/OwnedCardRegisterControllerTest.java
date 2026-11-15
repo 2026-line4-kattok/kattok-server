@@ -74,6 +74,30 @@ class OwnedCardRegisterControllerTest {
 	}
 
 	@Test
+	@DisplayName("실적 조건이 없는 카드(NONE·NEEDS_CHECK)에 performance를 null로 보내면 400을 반환한다")
+	void register_explicitNullPerformanceOnNoPerformanceCard_returns400() throws Exception {
+		for (PerformanceType type : new PerformanceType[] {PerformanceType.NONE, PerformanceType.NEEDS_CHECK}) {
+			Long productId = productIdOfType(type);
+
+			mockMvc.perform(post("/api/v1/owned-cards")
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("{\"productId\": %d, \"performance\": null}".formatted(productId)))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+		}
+	}
+
+	@Test
+	@DisplayName("실적 구간이 있는 카드에 performance를 null로 보내면 400을 반환한다")
+	void register_explicitNullPerformanceOnTierCard_returns400() throws Exception {
+		mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d, \"performance\": null}".formatted(starPlusProductId())))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
 	@DisplayName("실적 구간을 같이 보내면 이번 달 실적으로 바로 반영된다")
 	void register_withTier() throws Exception {
 		Long productId = starPlusProductId();
@@ -178,6 +202,14 @@ class OwnedCardRegisterControllerTest {
 		return cardProductRepository.findAll().stream()
 				.filter(product -> product.getPerformanceType() == PerformanceType.NONE
 						|| product.getPerformanceType() == PerformanceType.NEEDS_CHECK)
+				.findFirst()
+				.orElseThrow()
+				.getId();
+	}
+
+	private Long productIdOfType(PerformanceType type) {
+		return cardProductRepository.findAll().stream()
+				.filter(product -> product.getPerformanceType() == type)
 				.findFirst()
 				.orElseThrow()
 				.getId();

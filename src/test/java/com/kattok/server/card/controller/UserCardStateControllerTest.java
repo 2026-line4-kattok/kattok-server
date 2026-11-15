@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.TestcontainersConfiguration;
 import com.kattok.server.card.entity.CardPerformanceTier;
+import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.repository.CardPerformanceTierRepository;
 import com.kattok.server.card.repository.CardProductRepository;
 
@@ -225,6 +226,35 @@ class UserCardStateControllerTest {
 		mockMvc.perform(putStateRequest(userCardId, "{\"month\": \"%s\"}".formatted(MONTH)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("OWNED_CARD_NOT_FOUND"));
+	}
+
+	@Test
+	@DisplayName("실적 조건이 없는 카드(NONE·NEEDS_CHECK)에 실적을 보내면 400이고, 실적 없이 보내면 200이다")
+	void putState_performanceOnNoPerformanceCard_returns400() throws Exception {
+		for (PerformanceType type : new PerformanceType[] {PerformanceType.NONE, PerformanceType.NEEDS_CHECK}) {
+			Long userCardId = registerProductOfType(type);
+
+			mockMvc.perform(putStateRequest(userCardId,
+							"{\"month\": \"%s\", \"performance\": {\"status\": \"UNKNOWN\"}}".formatted(MONTH)))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+			mockMvc.perform(putStateRequest(userCardId, "{\"month\": \"%s\"}".formatted(MONTH)))
+					.andExpect(status().isOk());
+		}
+	}
+
+	private Long registerProductOfType(PerformanceType type) throws Exception {
+		Long productId = cardProductRepository.findAll().stream()
+				.filter(product -> product.getPerformanceType() == type)
+				.findFirst()
+				.orElseThrow()
+				.getId();
+		String response = mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d}".formatted(productId)))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		return ((Number) JsonPath.read(response, "$.id")).longValue();
 	}
 
 	private MockHttpServletRequestBuilder putStateRequest(Long userCardId, String body) {
