@@ -7,7 +7,8 @@ import com.kattok.server.merchant.entity.MerchantChannel;
 public record RecentMerchantResponse(Long id, String name, MerchantChannel channel,
 		MerchantResponse.CategorySummary category, Instant lastRecommendedAt) {
 	public static RecentMerchantResponse from(Merchant merchant, Instant lastRecommendedAt) {
-		var current = MerchantResponse.from(merchant);
-		return new RecentMerchantResponse(current.id(), current.name(), current.channel(), current.category(), lastRecommendedAt);
+		return new RecentMerchantResponse(merchant.getId(), merchant.getName(), merchant.getChannel(),
+				new MerchantResponse.CategorySummary(merchant.getCategory().getId(), merchant.getCategory().getName()),
+				lastRecommendedAt);
 	}
 }
