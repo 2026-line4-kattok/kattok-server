@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Collection;
+import org.springframework.data.domain.Pageable;
 import com.kattok.server.payment.entity.PaymentRecordStatus;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,6 +33,22 @@ public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, Lo
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select p from PaymentRecord p where p.recommendation.id = :id and p.user.id = :userId")
 	Optional<PaymentRecord> findForUpdate(@Param("id") Long recommendationId, @Param("userId") Long userId);
+
+	@Query("""
+			select r.merchant.id as merchantId, max(r.createdAt) as lastRecommendedAt
+			from PaymentRecord p join p.recommendation r
+			where p.user.id = :userId and r.user.id = :userId
+			and p.status in :paidResults and r.merchant is not null
+			group by r.merchant.id
+			order by max(r.createdAt) desc, r.merchant.id asc
+			""")
+	List<RecentMerchantProjection> findRecentMerchants(@Param("userId") Long userId,
+			@Param("paidResults") Collection<PaymentRecordStatus> paidResults, Pageable pageable);
+
+	interface RecentMerchantProjection {
+		Long getMerchantId();
+		Instant getLastRecommendedAt();
+	}
 
 	Optional<PaymentRecord> findByRecommendationId(Long recommendationId);
 }

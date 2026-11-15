@@ -22,6 +22,8 @@ import com.kattok.server.recommendation.entity.OverallStatus;
 import com.kattok.server.recommendation.entity.Recommendation;
 import com.kattok.server.recommendation.repository.RecommendationRepository;
 import com.kattok.server.user.entity.User;
+import com.kattok.server.payment.entity.PaymentRecord;
+import com.kattok.server.payment.repository.PaymentRecordRepository;
 import com.kattok.server.user.repository.UserRepository;
 
 @Import(TestcontainersConfiguration.class)
@@ -41,6 +43,9 @@ class MerchantControllerTest {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private PaymentRecordRepository paymentRecordRepository;
 
 	@Test
 	@DisplayName("키워드로 검색하면 이름·채널·업종을 담아 반환한다")
@@ -77,7 +82,7 @@ class MerchantControllerTest {
 	}
 
 	@Test
-	@DisplayName("확정한 추천이 없으면 최근 결제한 곳은 빈 배열이다")
+	@DisplayName("결제 완료 기록이 없으면 최근 결제한 곳은 빈 배열이다")
 	void recent_withoutConfirmedRecommendation_returnsEmpty() throws Exception {
 		mockMvc.perform(get("/api/v1/merchants/recent"))
 				.andExpect(status().isOk())
@@ -85,7 +90,7 @@ class MerchantControllerTest {
 	}
 
 	@Test
-	@DisplayName("확정한 추천의 결제처를 최신순으로, 중복 없이 최대 3개 반환한다")
+	@DisplayName("결제 완료 기록의 결제처를 최근 추천순으로 중복 없이 반환한다")
 	void recent_returnsDistinctMerchantsInOrder() throws Exception {
 		User demoUser = userRepository.findByEmail("demo@kattok.app").orElseThrow();
 		Merchant starbucks = merchantByKeyword("스타벅스");
@@ -114,6 +119,9 @@ class MerchantControllerTest {
 				demoUser, null, starbucks.getCategory(), 5000L, Map.of(), OverallStatus.CONFIRMED, null));
 		categoryOnly.confirm();
 		recommendationRepository.save(categoryOnly);
+		PaymentRecord payment = new PaymentRecord(demoUser, categoryOnly);
+		payment.confirmPaidWithRecommended();
+		paymentRecordRepository.save(payment);
 
 		mockMvc.perform(get("/api/v1/merchants/recent"))
 				.andExpect(status().isOk())
@@ -131,5 +139,8 @@ class MerchantControllerTest {
 				user, merchant, merchant.getCategory(), 5000L, Map.of(), OverallStatus.CONFIRMED, null));
 		recommendation.confirm();
 		recommendationRepository.save(recommendation);
+		PaymentRecord payment = new PaymentRecord(user, recommendation);
+		payment.confirmPaidWithRecommended();
+		paymentRecordRepository.save(payment);
 	}
 }
