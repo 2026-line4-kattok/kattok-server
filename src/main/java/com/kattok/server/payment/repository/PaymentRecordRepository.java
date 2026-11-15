@@ -3,6 +3,8 @@ package com.kattok.server.payment.repository;
 import java.util.Optional;
 import java.time.Instant;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 import com.kattok.server.payment.entity.PaymentRecordStatus;
@@ -25,6 +27,10 @@ public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, Lo
 			@Param("start") Instant start, @Param("end") Instant end);
 
 	long countByUserIdAndStatus(Long userId, PaymentRecordStatus status);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select p from PaymentRecord p where p.recommendation.id = :id and p.user.id = :userId")
+	Optional<PaymentRecord> findForUpdate(@Param("id") Long recommendationId, @Param("userId") Long userId);
 
 	Optional<PaymentRecord> findByRecommendationId(Long recommendationId);
 }

@@ -106,12 +106,14 @@ public class PaymentQueryService {
 			case PAID_OTHER -> payment.getActualUserCard().getId();
 			default -> null;
 		};
-		Card actual = actualId == null ? null : new Card(actualId, snapshot.items().stream()
+		Card actual = actualId == null ? null : new Card(actualId, payment.getActualCardNameSnapshot() != null
+				? payment.getActualCardNameSnapshot() : snapshot.items().stream()
 				.filter(item -> item.userCardId().equals(actualId)).map(Item::productName).findFirst()
 				.orElseGet(() -> snapshot.excludedCards().stream().filter(item -> item.userCardId().equals(actualId))
 						.map(item -> item.productName()).findFirst().orElseGet(() -> cards.owned(userId, actualId).productName())));
 		return new PaymentResponses.Record(snapshot.id(), payment.getStatus().name(), snapshot.merchant(), snapshot.category(),
-				snapshot.amount(), recommended, actual, actualId == null ? Long.valueOf(0) : benefit(snapshot, actualId),
+				snapshot.amount(), recommended, actual, payment.getConfirmationVersion() > 0 ? payment.getSavedBenefit()
+				: actualId == null ? Long.valueOf(0) : benefit(snapshot, actualId),
 				snapshot.createdAt(), payment.getConfirmedAt());
 	}
 

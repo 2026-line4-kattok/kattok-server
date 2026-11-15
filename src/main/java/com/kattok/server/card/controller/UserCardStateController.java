@@ -2,6 +2,8 @@ package com.kattok.server.card.controller;
 
 import java.time.DateTimeException;
 import java.time.YearMonth;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
@@ -45,8 +47,9 @@ public class UserCardStateController {
 	private final Validator validator;
 
 	@GetMapping
-	public UserCardStateResponse getState(@PathVariable Long id, @RequestParam(required = false) String month) {
-		return userCardStateService.getState(id, parseMonth(month));
+	public UserCardStateResponse getState(@PathVariable Long id, @RequestParam(required = false) String month,
+			@RequestParam(required = false) LocalDate date) {
+		return userCardStateService.getState(id, parseMonth(month), date);
 	}
 
 	@PutMapping
@@ -62,15 +65,25 @@ public class UserCardStateController {
 			PerformanceInput performance = body.hasNonNull("performance")
 					? jsonMapper.treeToValue(body.get("performance"), PerformanceInput.class)
 					: null;
-			List<CapUpdate> caps = body.hasNonNull("caps")
-					? jsonMapper.treeToValue(body.get("caps"),
-							jsonMapper.getTypeFactory().constructCollectionType(List.class, CapUpdate.class))
-					: null;
+			List<CapUpdate> caps = null;
+			if (body.hasNonNull("caps")) {
+				if (!body.get("caps").isArray()) throw ApiException.invalidInput("caps는 배열이어야 합니다.");
+				caps = new ArrayList<>();
+				for (JsonNode node : body.get("caps")) {
+					CapInput value = jsonMapper.treeToValue(node, CapInput.class);
+					if (value == null || !node.has("remainingLimitAmount") && !node.has("remainingCount"))
+						throw ApiException.invalidInput("변경할 잔여 금액 또는 횟수가 필요합니다.");
+					caps.add(new CapUpdate(value.capGroupId(), value.remainingLimitAmount(), value.remainingCount(),
+							node.has("remainingLimitAmount"), node.has("remainingCount"), value.periodStart()));
+				}
+			}
 			return new UpdateCardStateRequest(month, performance, caps);
 		} catch (DatabindException e) {
 			throw ApiException.invalidInput("입력값을 확인해 주세요.");
 		}
 	}
+
+	private record CapInput(Long capGroupId, Long remainingLimitAmount, Integer remainingCount, LocalDate periodStart) {}
 
 	private void validate(UpdateCardStateRequest request) {
 		Set<ConstraintViolation<UpdateCardStateRequest>> violations = validator.validate(request);

@@ -1,6 +1,7 @@
 package com.kattok.server.card.dto;
 
 import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 
 import jakarta.validation.Valid;
@@ -15,6 +16,11 @@ import jakarta.validation.constraints.NotNull;
 public record UpdateCardStateRequest(
 		@NotNull YearMonth month, @Valid PerformanceInput performance, List<@Valid CapUpdate> caps) {
 
-	public record CapUpdate(@NotNull Long capGroupId, Long remainingLimitAmount, Integer remainingCount) {
+	public record CapUpdate(@NotNull Long capGroupId, Long remainingLimitAmount, Integer remainingCount,
+			boolean amountProvided, boolean countProvided, LocalDate periodStart) {
+		/** 기존 서비스 호출은 두 필드를 보낸 것으로 취급한다. HTTP는 JsonNode로 실제 존재 여부를 전달한다. */
+		public CapUpdate(Long capGroupId, Long remainingLimitAmount, Integer remainingCount) {
+			this(capGroupId, remainingLimitAmount, remainingCount, true, true, null);
+		}
 	}
 }

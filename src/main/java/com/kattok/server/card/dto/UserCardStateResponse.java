@@ -23,6 +23,6 @@ public record UserCardStateResponse(
 			Long capAmount,
 			Long remainingLimitAmount,
 			Integer remainingCount,
-			Instant confirmedAt) {
+			Instant confirmedAt, String amountSource, String countSource, java.time.LocalDate periodStart) {
 	}
 }

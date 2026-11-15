@@ -1,6 +1,11 @@
 package com.kattok.server.card.service;
 
 import java.time.YearMonth;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashMap;
+import com.kattok.server.benefit.entity.CapPeriod;
+import com.kattok.server.card.entity.ConfirmationSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +35,17 @@ public class JpaUserCardStateReader implements UserCardStateReader {
 	private final UserCardRepository userCardRepository;
 	private final UserCardStateRepository userCardStateRepository;
 	private final UserCardCapUsageRepository userCardCapUsageRepository;
+	private final PaymentCapLedger capLedger;
 
 	@Override
 	public List<UserCardSnapshot> findForRecommendation(Long userId, YearMonth period) {
+		LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+		return findForRecommendation(userId, period.equals(YearMonth.from(today)) ? today : period.atDay(1));
+	}
+
+	@Override
+	public List<UserCardSnapshot> findForRecommendation(Long userId, LocalDate date) {
+		YearMonth period = YearMonth.from(date);
 		List<UserCard> userCards = userCardRepository.findByUserIdAndDeletedAtIsNullOrderByCreatedAtAsc(userId);
 		if (userCards.isEmpty()) {
 			return List.of();
@@ -53,14 +66,29 @@ public class JpaUserCardStateReader implements UserCardStateReader {
 		for (UserCard userCard : userCards) {
 			PerformanceState performance = toPerformanceState(statesByUserCardId.get(userCard.getId()));
 			Map<Long, CapState> caps = usagesByUserCardId.getOrDefault(userCard.getId(), List.of()).stream()
+					.filter(usage -> usage.getCapGroup().getCapPeriod() == CapPeriod.MONTHLY)
 					.collect(Collectors.toMap(
 							usage -> usage.getCapGroup().getId(),
 							usage -> new CapState(
 									usage.getRemainingLimitAmount(), usage.getRemainingCount(), usage.getSource())));
+			caps = new HashMap<>(caps);
+			for (var balance : capLedger.read(userCard.getId(), date)) {
+				caps.put(balance.capId(), new CapState(balance.amount(), balance.count(),
+						confirmationSource(balance.amountSource()), confirmationSource(balance.countSource())));
+			}
+
 			snapshots.add(new UserCardSnapshot(
 					userCard.getId(), userCard.getProduct().getId(), registrationOrder++, performance, caps));
 		}
 		return snapshots;
+	}
+
+	private static ConfirmationSource confirmationSource(String source) {
+		return switch (source) {
+			case "USER_INPUT" -> ConfirmationSource.USER_CONFIRMED;
+			case "ESTIMATED" -> ConfirmationSource.SYSTEM_ESTIMATED;
+			default -> null;
+		};
 	}
 
 	/** 실적을 확인한 적이 없으면(row 없음) UNKNOWN, 있으면 저장된 performance_status를 그대로 따른다. */

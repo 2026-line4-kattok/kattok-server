@@ -56,6 +56,15 @@ public class PaymentRecord {
 	@JoinColumn(name = "actual_user_card_id")
 	private UserCard actualUserCard;
 
+	@Column(name = "saved_benefit")
+	private Long savedBenefit;
+
+	@Column(name = "actual_card_name_snapshot")
+	private String actualCardNameSnapshot;
+
+	@Column(name = "confirmation_version", nullable = false)
+	private int confirmationVersion;
+
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -68,6 +77,15 @@ public class PaymentRecord {
 		this.user = user;
 		this.recommendation = recommendation;
 		this.status = PaymentRecordStatus.PENDING;
+	}
+
+	public void applyConfirmation(PaymentRecordStatus status, UserCard card, String cardName, Long benefit, Instant at) {
+		this.status = status;
+		this.actualUserCard = card;
+		this.actualCardNameSnapshot = cardName;
+		this.savedBenefit = benefit;
+		this.confirmedAt = at;
+		this.confirmationVersion = 1;
 	}
 
 	/** 추천 카드로 결제했음을 확인한다. */
