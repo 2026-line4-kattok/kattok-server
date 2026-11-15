@@ -1,5 +1,6 @@
 package com.kattok.server.recommendation.service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,18 +26,23 @@ public class JpaRecentMerchantReader implements RecentMerchantReader {
 	private final RecommendationRepository recommendationRepository;
 
 	@Override
-	public List<Long> recentMerchantIds(Long userId, int limit) {
+	public List<RecentMerchant> recentMerchants(Long userId, int limit) {
 		List<Recommendation> recent = recommendationRepository
 				.findByUserIdAndMerchantIsNotNullAndSavedAtIsNotNullOrderBySavedAtDesc(
 						userId, PageRequest.of(0, SEARCH_WINDOW));
 
-		Set<Long> merchantIds = new LinkedHashSet<>();
+		Set<Long> seenMerchantIds = new LinkedHashSet<>();
+		List<RecentMerchant> results = new ArrayList<>();
 		for (Recommendation recommendation : recent) {
-			merchantIds.add(recommendation.getMerchant().getId());
-			if (merchantIds.size() == limit) {
+			Long merchantId = recommendation.getMerchant().getId();
+			if (seenMerchantIds.add(merchantId)) {
+				// recent는 savedAt 내림차순이라, 이 결제처의 첫 등장이 가장 최근 시각이다.
+				results.add(new RecentMerchant(merchantId, recommendation.getSavedAt()));
+			}
+			if (results.size() == limit) {
 				break;
 			}
 		}
-		return List.copyOf(merchantIds);
+		return List.copyOf(results);
 	}
 }

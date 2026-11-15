@@ -101,6 +101,7 @@ class MerchantControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
 				.andExpect(jsonPath("$[0].name").value("스타벅스"))
+				.andExpect(jsonPath("$[0].lastRecommendedAt").isNotEmpty())
 				.andExpect(jsonPath("$[1].name").value("쿠팡"));
 	}
 
