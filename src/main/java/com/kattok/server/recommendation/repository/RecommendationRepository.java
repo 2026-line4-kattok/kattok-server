@@ -1,6 +1,7 @@
 package com.kattok.server.recommendation.repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,8 @@ import com.kattok.server.recommendation.entity.Recommendation;
 import jakarta.persistence.LockModeType;
 
 public interface RecommendationRepository extends JpaRepository<Recommendation, Long> {
+
+	List<Recommendation> findByIdInAndUserId(Collection<Long> ids, Long userId);
 
 	/** 다른 사용자의 추천은 없는 것으로 본다. */
 	Optional<Recommendation> findByIdAndUserId(Long id, Long userId);
