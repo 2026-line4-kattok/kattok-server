@@ -21,6 +21,7 @@ import com.kattok.server.card.dto.UpdateCardStateRequest;
 import com.kattok.server.card.dto.UserCardSnapshot;
 import com.kattok.server.card.dto.UserCardStateResponse;
 import com.kattok.server.card.entity.CardPerformanceTier;
+import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.repository.CardPerformanceTierRepository;
 import com.kattok.server.card.repository.CardProductRepository;
 import com.kattok.server.user.repository.UserRepository;
@@ -62,7 +63,8 @@ class JpaUserCardStateReaderTest {
 	@DisplayName("실적을 확인한 적 없으면 UNKNOWN이고 한도는 비어있다")
 	void unconfirmedState() {
 		Long userId = demoUserId();
-		OwnedCardResponse registered = ownedCardService.register(new RegisterCardRequest(starPlusProductId(), null));
+		OwnedCardResponse registered = ownedCardService.register(
+				new RegisterCardRequest(starPlusProductId(), new PerformanceInput(PerformanceStatus.UNKNOWN, null)));
 
 		List<UserCardSnapshot> snapshots = reader.findForRecommendation(userId, MONTH);
 
@@ -79,7 +81,8 @@ class JpaUserCardStateReaderTest {
 	void confirmedStateWithCaps() {
 		Long userId = demoUserId();
 		Long productId = starPlusProductId();
-		OwnedCardResponse registered = ownedCardService.register(new RegisterCardRequest(productId, null));
+		OwnedCardResponse registered = ownedCardService.register(
+				new RegisterCardRequest(productId, new PerformanceInput(PerformanceStatus.UNKNOWN, null)));
 		Long tierId = convenienceTierId(productId);
 
 		userCardStateService.updateState(registered.id(),
@@ -104,7 +107,8 @@ class JpaUserCardStateReaderTest {
 	@DisplayName("실적을 확인했지만 최저 구간도 못 채웠으면 BELOW로 반영된다")
 	void belowState() {
 		Long userId = demoUserId();
-		OwnedCardResponse registered = ownedCardService.register(new RegisterCardRequest(starPlusProductId(), null));
+		OwnedCardResponse registered = ownedCardService.register(
+				new RegisterCardRequest(starPlusProductId(), new PerformanceInput(PerformanceStatus.UNKNOWN, null)));
 
 		userCardStateService.updateState(registered.id(),
 				new UpdateCardStateRequest(MONTH, new PerformanceInput(PerformanceStatus.BELOW, null), null));
@@ -119,7 +123,8 @@ class JpaUserCardStateReaderTest {
 	@DisplayName("등록 순서대로 registrationOrder가 매겨진다")
 	void registrationOrder() {
 		Long userId = demoUserId();
-		OwnedCardResponse first = ownedCardService.register(new RegisterCardRequest(starPlusProductId(), null));
+		OwnedCardResponse first = ownedCardService.register(
+				new RegisterCardRequest(starPlusProductId(), new PerformanceInput(PerformanceStatus.UNKNOWN, null)));
 		Long secondProductId = anotherProductId(first.product().id());
 		OwnedCardResponse second = ownedCardService.register(new RegisterCardRequest(secondProductId, null));
 
@@ -141,10 +146,12 @@ class JpaUserCardStateReaderTest {
 
 	private Long anotherProductId(Long excludeId) {
 		return cardProductRepository.findAll().stream()
-				.map(com.kattok.server.card.entity.CardProduct::getId)
-				.filter(id -> !id.equals(excludeId))
+				.filter(product -> !product.getId().equals(excludeId))
+				.filter(product -> product.getPerformanceType() == PerformanceType.NONE
+						|| product.getPerformanceType() == PerformanceType.NEEDS_CHECK)
 				.findFirst()
-				.orElseThrow();
+				.orElseThrow()
+				.getId();
 	}
 
 	private Long convenienceTierId(Long productId) {

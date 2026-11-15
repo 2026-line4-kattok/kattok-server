@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -85,6 +86,12 @@ public class UserCardStateService {
 		}
 
 		if (request.caps() != null && !request.caps().isEmpty()) {
+			Set<Long> requestedCapGroupIds = new HashSet<>();
+			for (UpdateCardStateRequest.CapUpdate capUpdate : request.caps()) {
+				if (!requestedCapGroupIds.add(capUpdate.capGroupId())) {
+					throw ApiException.invalidInput("같은 한도를 중복해서 보낼 수 없습니다.");
+				}
+			}
 			Map<Long, Cap> caps = capsOf(productId);
 			for (UpdateCardStateRequest.CapUpdate capUpdate : request.caps()) {
 				Cap cap = caps.get(capUpdate.capGroupId());
@@ -153,7 +160,7 @@ public class UserCardStateService {
 				: capsForTier(productId, confirmedTier.getId(), userCard.getId(), month, date);
 
 		return new UserCardStateResponse(
-				month.toString(), status, performanceTier, options, caps,
+				month.toString(), userCard.getProduct().getPerformanceType(), status, performanceTier, options, caps,
 				state == null ? null : state.getConfirmedAt());
 	}
 

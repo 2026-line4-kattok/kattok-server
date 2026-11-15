@@ -6,6 +6,7 @@ import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.CardProduct;
 import com.kattok.server.card.entity.CardType;
 import com.kattok.server.card.entity.DataStatus;
+import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.entity.UserCard;
 
 public record OwnedCardResponse(
@@ -22,13 +23,15 @@ public record OwnedCardResponse(
 				userCard.getId(),
 				new ProductSummary(
 						product.getId(), product.getName(), product.getIssuer().getName(), product.getCardType(),
-						product.getDataStatus()),
+						product.getDataStatus(), product.getPerformanceType()),
 				performanceStatus,
 				performanceTier == null ? null : new PerformanceTierSummary(performanceTier.getId(), performanceTier.getLabel()),
 				userCard.getCreatedAt());
 	}
 
-	public record ProductSummary(Long id, String name, String issuerName, CardType cardType, DataStatus dataStatus) {
+	public record ProductSummary(
+			Long id, String name, String issuerName, CardType cardType, DataStatus dataStatus,
+			PerformanceType performanceType) {
 	}
 
 	public record PerformanceTierSummary(Long id, String label) {

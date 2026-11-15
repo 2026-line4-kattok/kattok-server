@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.kattok.server.card.entity.CardType;
 import com.kattok.server.card.entity.DataStatus;
+import com.kattok.server.card.entity.PerformanceType;
 
 /**
  * 카드 상품 상세. 실적 구간을 고를 때 "이 구간을 고르면 뭘 받는지" 바로 보이도록, 한도 목록을
@@ -16,6 +17,7 @@ public record CardProductDetailResponse(
 		CardType cardType,
 		Long annualFee,
 		DataStatus dataStatus,
+		PerformanceType performanceType,
 		boolean owned,
 		List<BenefitSummary> alwaysOnBenefits,
 		List<PerformanceTierDetail> performanceTiers) {

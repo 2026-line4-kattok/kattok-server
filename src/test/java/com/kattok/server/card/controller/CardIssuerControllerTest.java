@@ -11,16 +11,23 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.kattok.server.TestcontainersConfiguration;
+import com.kattok.server.card.entity.CardIssuer;
+import com.kattok.server.card.repository.CardIssuerRepository;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
+@Transactional
 class CardIssuerControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@Autowired
+	private CardIssuerRepository cardIssuerRepository;
 
 	@Test
 	@DisplayName("등록된 카드사 목록을 id, name, code 필드와 함께 반환한다")
@@ -38,5 +45,15 @@ class CardIssuerControllerTest {
 		mockMvc.perform(get("/api/v1/card-issuers"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.code == 'HYUNDAI')]").exists());
+	}
+
+	@Test
+	@DisplayName("등록된 상품이 없는 카드사는 목록에서 빠진다")
+	void excludesIssuerWithoutProducts() throws Exception {
+		cardIssuerRepository.save(new CardIssuer("상품 없는 카드사", "NO_PRODUCT_ISSUER"));
+
+		mockMvc.perform(get("/api/v1/card-issuers"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.code == 'NO_PRODUCT_ISSUER')]").doesNotExist());
 	}
 }

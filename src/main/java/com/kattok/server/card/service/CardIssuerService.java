@@ -18,7 +18,7 @@ public class CardIssuerService {
 	private final CardIssuerRepository cardIssuerRepository;
 
 	public List<CardIssuerResponse> findAll() {
-		return cardIssuerRepository.findAllByOrderByNameAsc().stream()
+		return cardIssuerRepository.findAllWithProductsOrderByNameAsc().stream()
 				.map(CardIssuerResponse::from)
 				.toList();
 	}
