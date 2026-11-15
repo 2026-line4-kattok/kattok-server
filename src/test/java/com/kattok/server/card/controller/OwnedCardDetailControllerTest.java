@@ -37,7 +37,7 @@ class OwnedCardDetailControllerTest {
 	private CardProductRepository cardProductRepository;
 
 	@Test
-	@DisplayName("실적을 확인한 적 없으면 performance.status는 UNKNOWN, tier는 null, caps는 빈 배열이다")
+	@DisplayName("실적을 확인한 적 없어도 performance.status는 UNKNOWN, tier는 null, 실적 무관 한도는 caps에 나온다")
 	void detail_beforeConfirmation() throws Exception {
 		Long userCardId = registerStarPlusWithUnknownPerformance();
 		String expectedBaseMonth = YearMonth.now(ZoneId.of("Asia/Seoul")).minusMonths(1).toString();
@@ -52,7 +52,8 @@ class OwnedCardDetailControllerTest {
 				.andExpect(jsonPath("$.performance.options[0].label").value("20만원 이상"))
 				.andExpect(jsonPath("$.performance.baseMonth").value(expectedBaseMonth))
 				.andExpect(jsonPath("$.caps").isArray())
-				.andExpect(jsonPath("$.caps.length()").value(0))
+				.andExpect(jsonPath("$.caps.length()").value(1))
+				.andExpect(jsonPath("$.caps[0].capAmount").value(3000))
 				.andExpect(jsonPath("$.benefits[0].usedInRecommendation").value(true))
 				.andExpect(jsonPath("$.savedBenefit.amount").value(0))
 				.andExpect(jsonPath("$.savedBenefit.paymentCount").value(0));

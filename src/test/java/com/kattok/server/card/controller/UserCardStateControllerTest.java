@@ -43,7 +43,7 @@ class UserCardStateControllerTest {
 	private CardPerformanceTierRepository cardPerformanceTierRepository;
 
 	@Test
-	@DisplayName("실적 구간을 확인한 적 없으면 상태는 UNKNOWN, performanceTier는 null, caps는 빈 배열이다")
+	@DisplayName("실적 구간을 확인한 적 없어도 실적 조건 없는 혜택의 한도는 caps에 나온다")
 	void getState_beforeConfirmation() throws Exception {
 		Long userCardId = registerStarPlus();
 
@@ -53,7 +53,8 @@ class UserCardStateControllerTest {
 				.andExpect(jsonPath("$.performanceStatus").value("UNKNOWN"))
 				.andExpect(jsonPath("$.performanceTier").doesNotExist())
 				.andExpect(jsonPath("$.caps").isArray())
-				.andExpect(jsonPath("$.caps.length()").value(0))
+				.andExpect(jsonPath("$.caps.length()").value(1))
+				.andExpect(jsonPath("$.caps[0].capAmount").value(3000))
 				.andExpect(jsonPath("$.performanceTierOptions[0].label").value("20만원 이상"));
 	}
 
@@ -95,7 +96,7 @@ class UserCardStateControllerTest {
 	}
 
 	@Test
-	@DisplayName("실적 구간을 확정하면 그 구간에 해당하는 한도가 caps에 나온다")
+	@DisplayName("실적 구간을 확정하면 그 구간에 해당하는 한도도 실적 무관 한도와 함께 caps에 나온다")
 	void putState_setsTier() throws Exception {
 		Long userCardId = registerStarPlus();
 		Long tierId = convenienceTierId();
@@ -104,12 +105,12 @@ class UserCardStateControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.performanceStatus").value("CONFIRMED"))
 				.andExpect(jsonPath("$.performanceTier.id").value(tierId))
-				.andExpect(jsonPath("$.caps[0].capAmount").value(2000))
-				.andExpect(jsonPath("$.caps[0].remainingLimitAmount").doesNotExist());
+				.andExpect(jsonPath("$.caps.length()").value(2))
+				.andExpect(jsonPath("$.caps[?(@.capAmount == 2000)][0].remainingLimitAmount").doesNotExist());
 	}
 
 	@Test
-	@DisplayName("실적을 확인했지만 최저 구간도 못 채웠으면 BELOW로 저장되고 caps는 빈 배열이다")
+	@DisplayName("실적을 확인했지만 최저 구간도 못 채웠어도 실적 조건 없는 혜택의 한도는 caps에 나온다")
 	void putState_setsBelow() throws Exception {
 		Long userCardId = registerStarPlus();
 
@@ -118,7 +119,8 @@ class UserCardStateControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.performanceStatus").value("BELOW"))
 				.andExpect(jsonPath("$.performanceTier").doesNotExist())
-				.andExpect(jsonPath("$.caps.length()").value(0));
+				.andExpect(jsonPath("$.caps.length()").value(1))
+				.andExpect(jsonPath("$.caps[0].capAmount").value(3000));
 	}
 
 	@Test
