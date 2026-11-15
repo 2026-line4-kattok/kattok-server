@@ -1,5 +1,6 @@
 package com.kattok.server.merchant.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,8 +60,10 @@ public class MerchantService {
 			return List.of();
 		}
 		String escaped = keyword.strip().replace("!", "!!").replace("%", "!%").replace("_", "!_");
+		// 저장소 결과가 이름 → ID 순이고 정렬은 안정적이라, 지원 결제처를 앞으로 보내도 각 그룹 안의 이름 → ID 순서는 유지된다.
 		return merchantRepository.searchByNameOrAlias("%" + escaped + "%").stream()
 				.map(merchant -> MerchantResponse.of(merchant, isSupported(merchant)))
+				.sorted(Comparator.comparing(response -> !response.supported()))
 				.toList();
 	}
 
@@ -80,7 +83,10 @@ public class MerchantService {
 				.collect(Collectors.toMap(Merchant::getId, Function.identity()));
 		return recent.stream()
 				.filter(row -> merchantsById.containsKey(row.merchantId()))
-				.map(row -> RecentMerchantResponse.from(merchantsById.get(row.merchantId()), row.lastRecommendedAt()))
+				.map(row -> {
+					Merchant merchant = merchantsById.get(row.merchantId());
+					return RecentMerchantResponse.from(merchant, row.lastRecommendedAt(), isSupported(merchant));
+				})
 				.toList();
 	}
 
