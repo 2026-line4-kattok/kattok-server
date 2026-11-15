@@ -95,6 +95,43 @@ class MerchantControllerTest {
 	}
 
 	@Test
+	@DisplayName("검색 결과는 지원 결제처가 먼저 오고, 그 안에서는 이름 → ID 순이다")
+	void search_supportedFirst() throws Exception {
+		MerchantCategory unsupportedCategory = merchantCategoryRepository.save(new MerchantCategory("테스트업종", "TEST_CATEGORY"));
+		merchantRepository.save(new Merchant("정렬테스트가", MerchantChannel.OFFLINE, unsupportedCategory));
+		merchantRepository.save(new Merchant("정렬테스트나", MerchantChannel.OFFLINE, merchantByKeyword("스타벅스").getCategory()));
+
+		mockMvc.perform(get("/api/v1/merchants").param("keyword", "정렬테스트"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].name").value("정렬테스트나"))
+				.andExpect(jsonPath("$[0].supported").value(true))
+				.andExpect(jsonPath("$[1].name").value("정렬테스트가"))
+				.andExpect(jsonPath("$[1].supported").value(false));
+	}
+
+	@Test
+	@DisplayName("최근 결제한 곳도 검색과 같은 기준으로 supported·unsupportedReason을 준다")
+	void recent_includesSupportFields() throws Exception {
+		User demoUser = userRepository.findByEmail("demo@kattok.app").orElseThrow();
+		MerchantCategory unsupportedCategory = merchantCategoryRepository.save(new MerchantCategory("테스트업종", "TEST_CATEGORY"));
+		Merchant unsupported = merchantRepository.save(new Merchant("테스트결제처", MerchantChannel.OFFLINE, unsupportedCategory));
+
+		confirmRecommendation(demoUser, merchantByKeyword("스타벅스"));
+		Thread.sleep(5);
+		confirmRecommendation(demoUser, unsupported);
+
+		mockMvc.perform(get("/api/v1/merchants/recent"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].name").value("테스트결제처"))
+				.andExpect(jsonPath("$[0].supported").value(false))
+				.andExpect(jsonPath("$[0].unsupportedReason").value("카똑이 아직 계산하지 않는 곳"))
+				.andExpect(jsonPath("$[1].name").value("스타벅스"))
+				.andExpect(jsonPath("$[1].supported").value(true))
+				.andExpect(jsonPath("$[1].unsupportedReason").doesNotExist());
+	}
+
+	@Test
 	@DisplayName("키워드 없이 호출하면 빈 배열을 반환한다")
 	void searchWithoutKeyword() throws Exception {
 		mockMvc.perform(get("/api/v1/merchants"))
