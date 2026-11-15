@@ -24,6 +24,7 @@ import com.kattok.server.card.dto.UpdateCardStateRequest;
 import com.kattok.server.card.dto.UserCardStateResponse;
 import com.kattok.server.card.dto.UserCardStateResponse.CapStatus;
 import com.kattok.server.card.dto.UserCardStateResponse.PerformanceTierOption;
+import com.kattok.server.card.dto.CardProductDetailResponse.PerformanceTierDetail;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.ConfirmationSource;
 import com.kattok.server.card.entity.PerformanceType;
@@ -148,11 +149,11 @@ public class UserCardStateService {
 
 	private UserCardStateResponse buildResponse(UserCard userCard, YearMonth month, LocalDate date) {
 		Long productId = userCard.getProduct().getId();
+		PerformanceType type = userCard.getProduct().getPerformanceType();
+		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
 
-		List<PerformanceTierOption> options = cardPerformanceTierRepository
-				.findByProductIdOrderByLevelAsc(productId).stream()
-				.map(UserCardStateService::toOption)
-				.toList();
+		List<PerformanceTierDetail> options = TierBenefits.tierOptions(
+				type, cardPerformanceTierRepository.findByProductIdOrderByLevelAsc(productId), productRules);
 
 		UserCardState state = userCardStateRepository.findByUserCardIdAndPeriodMonth(userCard.getId(), month)
 				.orElse(null);
@@ -160,24 +161,25 @@ public class UserCardStateService {
 		CardPerformanceTier confirmedTier = state == null ? null : state.getPerformanceTier();
 		PerformanceTierOption performanceTier = confirmedTier == null ? null : toOption(confirmedTier);
 
-		List<CapStatus> caps = capsFor(
-				productId, confirmedTier == null ? null : confirmedTier.getId(), userCard.getId(), month, date);
+		Long effectiveTierId = TierBenefits.effectiveTierId(
+				type, status, confirmedTier == null ? null : confirmedTier.getId(), productRules);
+		List<CapStatus> caps = capsFor(productRules, effectiveTierId, userCard.getId(), month, date);
 
 		return new UserCardStateResponse(
-				month.toString(), userCard.getProduct().getPerformanceType(), status, performanceTier, options, caps,
+				month.toString(), type, status, performanceTier, options, caps,
 				state == null ? null : state.getConfirmedAt());
 	}
 
-	/** 실적 조건 없는 규칙의 한도는 실적 확정 여부와 무관하게 포함하고, tier별 규칙의 한도는 확정한 tier일 때만 포함한다. */
-	private List<CapStatus> capsFor(Long productId, Long confirmedTierId, Long userCardId, YearMonth month, LocalDate date) {
-		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
+	/** 실적 무관 규칙의 한도는 항상, 구간 규칙의 한도는 적용 구간(확인한 구간 또는 최소 혜택 구간 가정)일 때만 포함한다. */
+	private List<CapStatus> capsFor(
+			ProductRules productRules, Long effectiveTierId, Long userCardId, YearMonth month, LocalDate date) {
 		if (productRules == null) {
 			return List.of();
 		}
 
 		Set<Long> relevantCapGroupIds = new LinkedHashSet<>();
 		for (Rule rule : productRules.rules()) {
-			if (rule.requiredTierId() == null || rule.requiredTierId().equals(confirmedTierId)) {
+			if (rule.requiredTierId() == null || rule.requiredTierId().equals(effectiveTierId)) {
 				addWithParents(relevantCapGroupIds, rule.capGroupId(), productRules.caps());
 			}
 		}
@@ -229,7 +231,7 @@ public class UserCardStateService {
 		Long amount = balance != null ? balance.amount() : usage == null ? null : usage.getRemainingLimitAmount();
 		Integer count = balance != null ? balance.count() : usage == null ? null : usage.getRemainingCount();
 		String source = usage != null && usage.getSource() == ConfirmationSource.USER_CONFIRMED ? "USER_INPUT" : "ESTIMATED";
-		return new CapStatus(cap.id(), cap.description(), cap.capPeriod(), cap.capAmount(),
+		return new CapStatus(cap.id(), cap.description(), cap.capPeriod(), cap.capAmount(), cap.capCount(),
 				cap.capAmount() == null ? null : amount, cap.capCount() == null ? null : count,
 				usage == null ? null : usage.getConfirmedAt(),
 				cap.capAmount() == null ? null : balance != null ? balance.amountSource() : amount == null ? "UNKNOWN" : source,
