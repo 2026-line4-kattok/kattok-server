@@ -23,4 +23,9 @@ public class MerchantController {
 	public List<MerchantResponse> search(@RequestParam(required = false) String keyword) {
 		return merchantService.search(keyword);
 	}
+
+	@GetMapping("/recent")
+	public List<MerchantResponse> recent() {
+		return merchantService.recent();
+	}
 }
