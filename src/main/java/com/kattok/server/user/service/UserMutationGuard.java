@@ -1,6 +1,8 @@
 package com.kattok.server.user.service;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
+import com.kattok.server.global.ApiException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +16,8 @@ public class UserMutationGuard {
 
 	@Transactional(propagation = Propagation.MANDATORY)
 	public void lock(Long userId) {
-		jdbc.queryForObject("select id from users where id = ? for update", Long.class, userId);
+		if (jdbc.queryForList("select id from users where id = ? for update", Long.class, userId).isEmpty()) {
+			throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다.");
+		}
 	}
 }

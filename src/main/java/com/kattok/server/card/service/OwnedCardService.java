@@ -75,6 +75,7 @@ public class OwnedCardService {
 	@Transactional
 	public OwnedCardResponse register(RegisterCardRequest request) {
 		User user = currentUserProvider.get();
+		mutationGuard.lock(user.getId());
 		CardProduct product = cardProductRepository.findById(request.productId())
 				.orElseThrow(() -> ApiException.notFound("CARD_PRODUCT_NOT_FOUND", "존재하지 않는 상품입니다."));
 

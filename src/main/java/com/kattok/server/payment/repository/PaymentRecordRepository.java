@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Collection;
 import com.kattok.server.payment.entity.PaymentRecordStatus;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.kattok.server.payment.entity.PaymentRecord;
 
 public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, Long> {
+
+	long countByUserId(Long userId);
+
+	List<PaymentRecord> findByUserIdAndStatusIn(Long userId, Collection<PaymentRecordStatus> statuses);
 
 	List<PaymentRecord> findByUserIdAndStatus(Long userId, PaymentRecordStatus status);
 
