@@ -25,4 +25,4 @@
 - [x] RED: 엄격 인증 모드에서 UI·리디렉션·swagger-config·api-docs 익명 조회, bearer schema 및 보호 API security와 auth security 빈 배열, 토큰 없는 실제 API 401, API 경로만 문서화 검증.
 - [x] GREEN: 의존성·OpenAPI 빈·문서 경로 허용·가입로그인 보안 표시·UI 설정 추가.
 - [x] 전체 테스트 실행, README에 로컬/배포 후 주소·Authorize 사용·노션 병행·배포 별도 기록.
-- [ ] 독립 리뷰 후 필요한 수정 검증, 커밋·PR 생성. 배포하지 않음.
+- [x] 독립 리뷰 후 필요한 수정 검증, 커밋·PR 생성. 배포하지 않음.
