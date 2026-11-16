@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kattok.server.benefit.engine.BenefitCalculator;
 import com.kattok.server.benefit.engine.ProductRules;
 import com.kattok.server.benefit.engine.ProductRules.Cap;
 import com.kattok.server.benefit.engine.ProductRules.Rule;
@@ -79,7 +80,7 @@ public class ProductRulesReader {
 
 	/**
 	 * 상품의 오늘 유효한 혜택 규칙 전체(미검증 포함)와 각 규칙이 추천 계산에 실제로 쓰이는지. 카드 상세(3-2) 혜택 목록에 쓴다.
-	 * 추천 계산은 비교 대상 상품의 검증된 규칙만 쓰므로, 그 조건을 그대로 따른다.
+	 * 추천 계산은 비교 대상 상품의 검증된 규칙 중 엔진이 계산하는 유형({@link BenefitCalculator#supports})만 쓰므로, 그 조건을 그대로 따른다.
 	 */
 	public List<RuleUsage> ruleUsages(Long productId, LocalDate date) {
 		CardProduct product = cardProductRepository.findById(productId).orElse(null);
@@ -89,7 +90,8 @@ public class ProductRulesReader {
 		boolean comparable = isCalculable(product);
 		return benefitRuleRepository.findValidRules(productId, date).stream()
 				.map(rule -> new RuleUsage(rule.getId(), rule.getDisplayText(), rule.getCapGroup().getId(),
-						comparable && rule.getVerificationStatus() == VerificationStatus.VERIFIED))
+						comparable && rule.getVerificationStatus() == VerificationStatus.VERIFIED
+								&& BenefitCalculator.supports(rule.getBenefitType())))
 				.toList();
 	}
 

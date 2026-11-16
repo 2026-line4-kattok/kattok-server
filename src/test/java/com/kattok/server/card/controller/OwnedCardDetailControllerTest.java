@@ -87,6 +87,27 @@ class OwnedCardDetailControllerTest {
 	}
 
 	@Test
+	@DisplayName("검증됐어도 엔진이 계산하지 않는 마일리지 규칙은 usedInRecommendation이 false다")
+	void detail_mileageRule_notUsedInRecommendation() throws Exception {
+		Long productId = starPlusProductId();
+		Long capGroupId = jdbc.queryForObject(
+				"select min(id) from benefit_cap_groups where product_id = ?", Long.class, productId);
+		Long categoryId = jdbc.queryForObject("select id from merchant_categories where code = 'CAFE'", Long.class);
+		Long mileageRuleId = jdbc.queryForObject("""
+				insert into benefit_rules (product_id, category_id, cap_group_id, benefit_type, rate, display_text,
+					source_ref, verification_status, rule_version, valid_from)
+				values (?, ?, ?, 'MILE_RATE', 0.01, '마일리지 적립', '테스트', 'VERIFIED', 1, current_date)
+				returning id
+				""", Long.class, productId, categoryId, capGroupId);
+		Long userCardId = registerStarPlusWithUnknownPerformance();
+
+		mockMvc.perform(get("/api/v1/owned-cards/{id}", userCardId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.benefits[?(@.ruleId == %d)].usedInRecommendation".formatted(mileageRuleId))
+						.value(false));
+	}
+
+	@Test
 	@DisplayName("실적 구간을 확정하면 그 구간에 해당하는 한도가 caps에 나온다")
 	void detail_afterConfirmation() throws Exception {
 		Long tierId = firstTierId(starPlusProductId());
