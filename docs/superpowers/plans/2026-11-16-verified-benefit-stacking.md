@@ -44,8 +44,8 @@
 
 **Interfaces:** Consumes Task 1 appliedBenefits·projection overload. Produces DB stackable 읽기와 복수 appliedRules·집계 remainingLimitsAfter를 저장한 기존 추천 응답.
 
-- [ ] **Step 1: Write failing HTTP tests** — 테스트 DB에서만 표시를 켜고 실제 POST/GET 추천 총액/규칙별 금액·계산식/공유 금액·횟수·독립 출처 확인, 실제 결제 확인 후 원장·혜택 집계 확인, NOT_PAID 수정 후 실제 차감 복원, 규칙 변경 뒤 과거 GET 불변, 재입력 보호, 표시되지 않은 데이터 유지.
-- [ ] **Step 2: Verify RED** — `./gradlew test --tests '*VerifiedBenefitStackingTest'`; column 또는 응답 합산 미구현 실패 확인.
-- [ ] **Step 3: Implement** — 새 nullable=false default false 메타데이터, 명시적 읽기, 적용 목록 기반 상세·가정·원장 projection 저장. 기존 결제 원장의 동작 변경은 검증에서 필요할 때만.
-- [ ] **Step 4: Verify GREEN** — 새 테스트와 `./gradlew test`; 모든 기존 테스트 통과.
-- [ ] **Step 5: Document and commit** — 표시의 의미·표시 대상 검증 책임·호환 필드 의미·기존 데이터 변화 없음을 문서화하고 커밋. 전체 변경 독립 리뷰, 필요한 수정 RED→GREEN, PR 생성·CI·Notion에 PR 대기로 반영.
+- [x] **Step 1: Write failing HTTP tests** — 테스트 DB에서만 표시를 켜고 실제 POST/GET 추천 총액/규칙별 금액·계산식/공유 금액·횟수·독립 출처 확인, 실제 결제 확인 후 원장·혜택 집계 확인, NOT_PAID 수정 후 실제 차감 복원, 규칙 변경 뒤 과거 GET 불변, 재입력 보호, 표시되지 않은 데이터 유지.
+- [x] **Step 2: Verify RED** — `./gradlew test --tests '*VerifiedBenefitStackingTest'`; column 또는 응답 합산 미구현 실패 확인.
+- [x] **Step 3: Implement** — 새 nullable=false default false 메타데이터, 명시적 읽기, 적용 목록 기반 상세·가정·원장 projection 저장. 기존 결제 원장의 동작 변경은 검증에서 필요할 때만.
+- [x] **Step 4: Verify GREEN** — 새 테스트와 `./gradlew test`; 모든 기존 테스트 통과.
+- [x] **Step 5: Document and commit** — 표시의 의미·표시 대상 검증 책임·호환 필드 의미·기존 데이터 변화 없음을 문서화하고 커밋. 전체 변경 독립 리뷰, 필요한 수정 RED→GREEN, PR 생성·CI·Notion에 PR 대기로 반영.

@@ -216,13 +216,19 @@ public class RecommendationService {
 		List<RemainingLimitProjection> remainingLimitsAfter = List.of();
 		List<Assumption> assumptions = new ArrayList<>();
 		if (rule != null) {
-			BenefitDetails.Calculation detail = BenefitDetails.calculation(rule, payment.amount(), card.expectedBenefit());
+			BenefitDetails.Calculation detail = BenefitDetails.calculation(
+					rule, payment.amount(), card.appliedBenefits().getFirst().benefitAmount());
 			calculation = new Calculation(
 					detail.baseAmount(), detail.ratePercent(), detail.fixedAmount(), detail.capApplied());
-			appliedRules = List.of(new AppliedRule(rule.id(), card.appliedRuleText(), card.expectedBenefit(),
-					calculation, BenefitDetails.capGroupIds(rule, input.product())));
+			appliedRules = card.appliedBenefits().stream().map(appliedBenefit -> {
+				Rule appliedRule = BenefitDetails.appliedRule(input.product(), appliedBenefit.ruleId());
+				var ruleCalculation = BenefitDetails.calculation(appliedRule, payment.amount(), appliedBenefit.benefitAmount());
+				return new AppliedRule(appliedRule.id(), appliedRule.displayText(), appliedBenefit.benefitAmount(),
+						new Calculation(ruleCalculation.baseAmount(), ruleCalculation.ratePercent(), ruleCalculation.fixedAmount(),
+								ruleCalculation.capApplied()), BenefitDetails.capGroupIds(appliedRule, input.product()));
+			}).toList();
 			remainingLimitsAfter = BenefitDetails.remainingLimitsAfter(
-					rule, input.product(), input.snapshot(), card.expectedBenefit()).stream()
+					card, input.product(), input.snapshot()).stream()
 					.map(limit -> new RemainingLimitProjection(
 							limit.capGroupId(), limit.description(), limit.capPeriod(), limit.capAmount(), limit.capCount(),
 							limit.remainingLimitBefore(), limit.remainingLimitAmount(), limit.remainingCountBefore(),
@@ -230,11 +236,11 @@ public class RecommendationService {
 							limit.countSource() == null ? null : limit.countSource().name()))
 					.toList();
 			BenefitDetails.RemainingLimit limit = BenefitDetails.remainingLimitAfter(
-					rule, input.product(), input.snapshot(), card.expectedBenefit());
+					card, input.product(), input.snapshot());
 			if (limit != null) {
 				remainingLimitAfter = new RemainingLimit(limit.amount(), limit.source().name());
 			}
-			for (AssumptionTarget target : BenefitDetails.assumptionTargets(card, rule, input.product(), input.snapshot())) {
+			for (AssumptionTarget target : BenefitDetails.assumptionTargets(card, input.product(), input.snapshot())) {
 				boolean affectsRank = analyzer.affectsRank(inputs, payment, card.userCardId(),
 						target.type(), target.capGroupId(), result.recommendedUserCardId());
 				assumptions.add(new Assumption(target.type().name(), assumptionMessage(target.type(), productName),
@@ -248,9 +254,11 @@ public class RecommendationService {
 		applied.put("remainingLimitAfter", toJson(remainingLimitAfter));
 		applied.put("remainingLimitsAfter", toJson(remainingLimitsAfter));
 		// 응답 형식은 유지하고 무한도 그룹과 예전 스냅샷의 정보 누락을 결제 확인에서 구분한다.
-		applied.put("uncappedCapGroupIds", rule == null ? List.of() : BenefitDetails.capGroupIds(rule, input.product()).stream()
+		applied.put("uncappedCapGroupIds", card.appliedBenefits().stream()
+				.map(appliedBenefit -> BenefitDetails.appliedRule(input.product(), appliedBenefit.ruleId()))
+				.flatMap(appliedRule -> BenefitDetails.capGroupIds(appliedRule, input.product()).stream())
 				.filter(id -> input.product().caps().get(id).capAmount() == null && input.product().caps().get(id).capCount() == null)
-				.toList());
+				.distinct().sorted().toList());
 		applied.put("noBenefitReason", noBenefitMessage(card.noBenefitReason(), categoryBasis));
 
 		Map<String, Object> unknown = new LinkedHashMap<>();

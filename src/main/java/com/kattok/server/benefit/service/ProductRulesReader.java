@@ -122,7 +122,8 @@ public class ProductRulesReader {
 				rule.getMinPaymentAmount(),
 				rule.getMaxEligibleTxnAmount(),
 				RuleConditions.from(rule.getConditions()),
-				rule.getDisplayText());
+				rule.getDisplayText(),
+				rule.isStackable());
 	}
 
 	private static Map<Long, Tier> tiersOf(List<BenefitRule> rules) {
