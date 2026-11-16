@@ -44,7 +44,10 @@ public class SecurityConfig {
 	static final String ISSUER = "kattok";
 
 	/** 토큰 없이 부를 수 있는 경로. */
-	private static final String[] PUBLIC_PATHS = {"/api/v1/auth/signup", "/api/v1/auth/login", "/actuator/health"};
+	private static final String[] PUBLIC_PATHS = {
+			"/api/v1/auth/signup", "/api/v1/auth/login", "/actuator/health",
+			"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml"
+	};
 
 	/** 웹 요청 필터. 웹 서버 없이 띄우는 테스트(Repository 테스트 등)에서는 만들지 않는다. */
 	@Bean

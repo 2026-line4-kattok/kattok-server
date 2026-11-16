@@ -19,3 +19,10 @@ kattok:
   demo:
     # 시연용 테스트 계정 비밀번호. 환경변수로만 넣고, 없으면 테스트 계정으로 로그인할 수 없다.
     password: ${DEMO_USER_PASSWORD:}
+
+springdoc:
+  paths-to-match: /api/v1/**
+  swagger-ui:
+    disable-swagger-default-url: true
+    persist-authorization: false
+    validator-url: ""

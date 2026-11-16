@@ -48,6 +48,18 @@ docker compose up -d
 curl http://localhost:8080/actuator/health
 ```
 
+### Swagger UI
+
+서버 실행 후 [Swagger UI](http://localhost:8080/swagger-ui/index.html)에서 현재 코드의 API를 조회·호출할 수 있습니다. OpenAPI JSON은 `/v3/api-docs`입니다. 문서 조회는 토큰 없이 가능하며, 실제 API 호출에는 기존 인증 정책이 적용됩니다.
+
+1. `/api/v1/auth/login` 또는 `/api/v1/auth/signup`을 호출합니다.
+2. 응답의 `accessToken` 값을 복사해 화면의 **Authorize**에 입력합니다. `Bearer ` 접두어는 붙이지 않습니다.
+3. 보호된 API를 **Try it out**으로 호출합니다. 토큰은 새로고침 이후 유지하지 않습니다.
+
+배포 후 공유 주소는 `배포 서버 주소/swagger-ui/index.html`입니다. 서버를 새 코드로 배포해야 열립니다. 배포 담당자가 접속과 실제 API 호출을 확인한 뒤 공유합니다. 프록시도 `/swagger-ui/**`와 `/v3/api-docs`·`/v3/api-docs/**`를 같은 서버로 전달해야 합니다. 루트 경로(`/`) 배포를 기준으로 설정했습니다.
+
+자동 생성 문서는 현재 컨트롤러·DTO를 기준으로 합니다. 수동 JSON 바인딩을 사용하는 카드 등록·상태 수정의 입력 예시, 필드 생략/null 처리, 오류·정책 설명은 [노션 API 명세서](https://app.notion.com/p/API-412d0fe5fefa81cca30eeda8a2021f30)를 함께 확인합니다. 이번 설정은 API별 상세 설명 전체를 작성한 것이 아닙니다.
+
 ### 로컬 DB 정보
 
 | 항목 | 값 |
