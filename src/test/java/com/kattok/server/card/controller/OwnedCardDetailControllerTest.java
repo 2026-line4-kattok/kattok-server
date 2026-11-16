@@ -37,7 +37,7 @@ class OwnedCardDetailControllerTest {
 	private CardProductRepository cardProductRepository;
 
 	@Test
-	@DisplayName("실적을 확인한 적 없어도 performance.status는 UNKNOWN, tier는 null, 실적 무관 한도는 caps에 나온다")
+	@DisplayName("실적을 모르면 status는 UNKNOWN, tier는 null, caps는 실적 무관 한도 + 최소 혜택 구간 가정 한도다")
 	void detail_beforeConfirmation() throws Exception {
 		Long userCardId = registerStarPlusWithUnknownPerformance();
 		String expectedBaseMonth = YearMonth.now(ZoneId.of("Asia/Seoul")).minusMonths(1).toString();
@@ -50,10 +50,11 @@ class OwnedCardDetailControllerTest {
 				.andExpect(jsonPath("$.performance.status").value("UNKNOWN"))
 				.andExpect(jsonPath("$.performance.tier").doesNotExist())
 				.andExpect(jsonPath("$.performance.options[0].label").value("20만원 이상"))
+				.andExpect(jsonPath("$.performance.options[0].benefits[0].displayText").value("GS25/CU 5% 할인"))
 				.andExpect(jsonPath("$.performance.baseMonth").value(expectedBaseMonth))
-				.andExpect(jsonPath("$.caps").isArray())
-				.andExpect(jsonPath("$.caps.length()").value(1))
-				.andExpect(jsonPath("$.caps[0].capAmount").value(3000))
+				.andExpect(jsonPath("$.caps.length()").value(2))
+				.andExpect(jsonPath("$.caps[?(@.capAmount == 3000)]").isNotEmpty())
+				.andExpect(jsonPath("$.caps[?(@.capAmount == 2000)]").isNotEmpty())
 				.andExpect(jsonPath("$.benefits[0].usedInRecommendation").value(true))
 				.andExpect(jsonPath("$.savedBenefit.amount").value(0))
 				.andExpect(jsonPath("$.savedBenefit.paymentCount").value(0));

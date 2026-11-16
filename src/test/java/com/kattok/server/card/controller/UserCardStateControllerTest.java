@@ -44,7 +44,7 @@ class UserCardStateControllerTest {
 	private CardPerformanceTierRepository cardPerformanceTierRepository;
 
 	@Test
-	@DisplayName("실적 구간을 확인한 적 없어도 실적 조건 없는 혜택의 한도는 caps에 나온다")
+	@DisplayName("실적을 모르면 실적 무관 한도에 더해 최소 혜택 구간을 가정한 한도가 caps에 나오고, 선택지에는 구간별 혜택이 붙는다")
 	void getState_beforeConfirmation() throws Exception {
 		Long userCardId = registerStarPlus();
 
@@ -53,10 +53,25 @@ class UserCardStateControllerTest {
 				.andExpect(jsonPath("$.performanceType").value("SINGLE"))
 				.andExpect(jsonPath("$.performanceStatus").value("UNKNOWN"))
 				.andExpect(jsonPath("$.performanceTier").doesNotExist())
-				.andExpect(jsonPath("$.caps").isArray())
-				.andExpect(jsonPath("$.caps.length()").value(1))
-				.andExpect(jsonPath("$.caps[0].capAmount").value(3000))
-				.andExpect(jsonPath("$.performanceTierOptions[0].label").value("20만원 이상"));
+				.andExpect(jsonPath("$.caps.length()").value(2))
+				.andExpect(jsonPath("$.caps[?(@.capAmount == 3000)]").isNotEmpty())
+				.andExpect(jsonPath("$.caps[?(@.capAmount == 2000)]").isNotEmpty())
+				.andExpect(jsonPath("$.caps[0].remainingLimitAmount").doesNotExist())
+				.andExpect(jsonPath("$.caps[0].capCount").hasJsonPath())
+				.andExpect(jsonPath("$.performanceTierOptions[0].label").value("20만원 이상"))
+				.andExpect(jsonPath("$.performanceTierOptions[0].benefits[0].displayText").value("GS25/CU 5% 할인"))
+				.andExpect(jsonPath("$.performanceTierOptions[0].benefits[0].capAmount").value(2000));
+	}
+
+	@Test
+	@DisplayName("구간 확인이 필요한(NEEDS_CHECK) 카드는 실적 선택지가 비어 있고 구간 한도를 가정하지 않는다")
+	void getState_needsCheckCard_noOptions() throws Exception {
+		Long userCardId = registerProductOfType(PerformanceType.NEEDS_CHECK);
+
+		mockMvc.perform(get("/api/v1/owned-cards/{id}/state", userCardId).param("month", MONTH))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.performanceType").value("NEEDS_CHECK"))
+				.andExpect(jsonPath("$.performanceTierOptions.length()").value(0));
 	}
 
 	@Test
