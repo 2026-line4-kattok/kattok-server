@@ -9,6 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import com.kattok.server.card.dto.UpdateCardStateRequest;
 import com.kattok.server.card.dto.UserCardStateResponse;
 import com.kattok.server.card.dto.UserCardStateResponse.CapStatus;
 import com.kattok.server.card.dto.UserCardStateResponse.PerformanceTierOption;
+import com.kattok.server.card.dto.UserCardStateResponse.TierOption;
 import com.kattok.server.card.dto.CardProductDetailResponse.PerformanceTierDetail;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.ConfirmationSource;
@@ -152,7 +154,7 @@ public class UserCardStateService {
 		PerformanceType type = userCard.getProduct().getPerformanceType();
 		ProductRules productRules = productRulesReader.read(Set.of(productId), LocalDate.now(KST)).get(productId);
 
-		List<PerformanceTierDetail> options = TierBenefits.tierOptions(
+		List<PerformanceTierDetail> tierDetails = TierBenefits.tierOptions(
 				type, cardPerformanceTierRepository.findByProductIdOrderByLevelAsc(productId), productRules);
 
 		UserCardState state = userCardStateRepository.findByUserCardIdAndPeriodMonth(userCard.getId(), month)
@@ -163,27 +165,47 @@ public class UserCardStateService {
 
 		Long effectiveTierId = TierBenefits.effectiveTierId(
 				type, status, confirmedTier == null ? null : confirmedTier.getId(), productRules);
-		List<CapStatus> caps = capsFor(productRules, effectiveTierId, userCard.getId(), month, date);
+		CapStatusReader capStatuses = capStatusReader(productRules, userCard.getId(), month, date);
+		Set<Long> alwaysOnCapIds = capIdsOf(productRules, rule -> rule.requiredTierId() == null);
+
+		List<CapStatus> caps = capIdsOf(productRules,
+				rule -> rule.requiredTierId() == null || rule.requiredTierId().equals(effectiveTierId)).stream()
+				.map(id -> capStatuses.read(id, alwaysOnCapIds.contains(id) ? null : effectiveTierId))
+				.toList();
+		List<TierOption> options = tierDetails.stream()
+				.map(detail -> new TierOption(detail.id(), detail.level(), detail.minAmount(), detail.label(),
+						detail.benefits(),
+						capIdsOf(productRules, rule -> detail.id().equals(rule.requiredTierId())).stream()
+								.filter(id -> !alwaysOnCapIds.contains(id))
+								.map(id -> capStatuses.read(id, detail.id()))
+								.toList()))
+				.toList();
 
 		return new UserCardStateResponse(
 				month.toString(), type, status, performanceTier, options, caps,
 				state == null ? null : state.getConfirmedAt());
 	}
 
-	/** 실적 무관 규칙의 한도는 항상, 구간 규칙의 한도는 적용 구간(확인한 구간 또는 최소 혜택 구간 가정)일 때만 포함한다. */
-	private List<CapStatus> capsFor(
-			ProductRules productRules, Long effectiveTierId, Long userCardId, YearMonth month, LocalDate date) {
+	/** 조건에 맞는 규칙의 한도 ID(상위 한도 포함). 규칙 순서대로 한 번씩만 담는다. */
+	private static Set<Long> capIdsOf(ProductRules productRules, Predicate<Rule> filter) {
+		Set<Long> ids = new LinkedHashSet<>();
 		if (productRules == null) {
-			return List.of();
+			return ids;
 		}
-
-		Set<Long> relevantCapGroupIds = new LinkedHashSet<>();
 		for (Rule rule : productRules.rules()) {
-			if (rule.requiredTierId() == null || rule.requiredTierId().equals(effectiveTierId)) {
-				addWithParents(relevantCapGroupIds, rule.capGroupId(), productRules.caps());
+			if (filter.test(rule)) {
+				addWithParents(ids, rule.capGroupId(), productRules.caps());
 			}
 		}
+		return ids;
+	}
 
+	/** 한도 ID와 그 한도가 속한 구간으로 저장된 남은 값을 채운 응답 항목을 만든다. 저장 값은 한 번만 읽는다. */
+	private CapStatusReader capStatusReader(
+			ProductRules productRules, Long userCardId, YearMonth month, LocalDate date) {
+		if (productRules == null) {
+			return (capGroupId, tierId) -> null;
+		}
 		Map<Long, UserCardCapUsage> usageByCapGroupId = userCardCapUsageRepository
 				.findByUserCardIdAndPeriodMonth(userCardId, month).stream()
 				.collect(Collectors.toMap(usage -> usage.getCapGroup().getId(), usage -> usage));
@@ -193,8 +215,13 @@ public class UserCardStateService {
 		Map<Long, PaymentCapLedger.Balance> balances = capLedger.read(userCardId, reference).stream()
 				.filter(balance -> balance.period() != CapPeriod.DAILY || dailyDateKnown)
 				.collect(Collectors.toMap(PaymentCapLedger.Balance::capId, balance -> balance));
-		return relevantCapGroupIds.stream().map(id -> toCapStatus(productRules.caps().get(id),
-				usageByCapGroupId.get(id), balances.get(id), reference, dailyDateKnown)).toList();
+		return (capGroupId, tierId) -> toCapStatus(productRules.caps().get(capGroupId), tierId,
+				usageByCapGroupId.get(capGroupId), balances.get(capGroupId), reference, dailyDateKnown);
+	}
+
+	@FunctionalInterface
+	private interface CapStatusReader {
+		CapStatus read(Long capGroupId, Long tierId);
 	}
 
 	private Map<Long, Cap> capsOf(Long productId) {
@@ -225,13 +252,13 @@ public class UserCardStateService {
 		return new PerformanceTierOption(tier.getId(), tier.getLevel(), tier.getLabel(), tier.getMinAmount());
 	}
 
-	private static CapStatus toCapStatus(Cap cap, UserCardCapUsage usage, PaymentCapLedger.Balance balance,
+	private static CapStatus toCapStatus(Cap cap, Long tierId, UserCardCapUsage usage, PaymentCapLedger.Balance balance,
 			LocalDate reference, boolean dailyDateKnown) {
 		if (cap.capPeriod() != CapPeriod.MONTHLY) usage = null;
 		Long amount = balance != null ? balance.amount() : usage == null ? null : usage.getRemainingLimitAmount();
 		Integer count = balance != null ? balance.count() : usage == null ? null : usage.getRemainingCount();
 		String source = usage != null && usage.getSource() == ConfirmationSource.USER_CONFIRMED ? "USER_INPUT" : "ESTIMATED";
-		return new CapStatus(cap.id(), cap.description(), cap.capPeriod(), cap.capAmount(), cap.capCount(),
+		return new CapStatus(cap.id(), tierId, cap.description(), cap.capPeriod(), cap.capAmount(), cap.capCount(),
 				cap.capAmount() == null ? null : amount, cap.capCount() == null ? null : count,
 				usage == null ? null : usage.getConfirmedAt(),
 				cap.capAmount() == null ? null : balance != null ? balance.amountSource() : amount == null ? "UNKNOWN" : source,

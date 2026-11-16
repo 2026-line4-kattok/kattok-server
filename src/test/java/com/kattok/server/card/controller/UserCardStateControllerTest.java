@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
+
 import com.jayway.jsonpath.JsonPath;
 
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +28,8 @@ import com.kattok.server.card.entity.PerformanceType;
 import com.kattok.server.card.repository.CardPerformanceTierRepository;
 import com.kattok.server.card.repository.CardProductRepository;
 
+import jakarta.persistence.EntityManager;
+
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
@@ -42,6 +46,9 @@ class UserCardStateControllerTest {
 
 	@Autowired
 	private CardPerformanceTierRepository cardPerformanceTierRepository;
+
+	@Autowired
+	private EntityManager entityManager;
 
 	@Test
 	@DisplayName("실적을 모르면 실적 무관 한도에 더해 최소 혜택 구간을 가정한 한도가 caps에 나오고, 선택지에는 구간별 혜택이 붙는다")
@@ -278,6 +285,81 @@ class UserCardStateControllerTest {
 
 	private static String confirmedBody(Long tierId) {
 		return "{\"month\": \"%s\", \"performance\": {\"status\": \"CONFIRMED\", \"tierId\": %d}}".formatted(MONTH, tierId);
+	}
+
+	@Test
+	@DisplayName("실적 선택지의 혜택마다 ruleId·capGroupId가 있고, 구간마다 상위 한도를 포함한 한도 목록이 붙는다")
+	void getState_tierOptionsCarryCapsPerTier() throws Exception {
+		Long userCardId = registerEverydayCheck();
+		List<Long> tierIds = everydayTierIds();
+
+		mockMvc.perform(get("/api/v1/owned-cards/{id}/state", userCardId).param("month", MONTH))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.performanceStatus").value("UNKNOWN"))
+				.andExpect(jsonPath("$.performanceTierOptions[0].benefits[0].ruleId").isNumber())
+				.andExpect(jsonPath("$.performanceTierOptions[0].benefits[0].capGroupId").isNumber())
+				// 구간 2: 커피·쇼핑·택시 한도 + 특별적립 통합 월한도(상위 한도)
+				.andExpect(jsonPath("$.performanceTierOptions[1].caps.length()").value(4))
+				.andExpect(jsonPath("$.performanceTierOptions[1].caps[?(@.tierId == %d)]".formatted(tierIds.get(1)))
+						.value(org.hamcrest.Matchers.hasSize(4)))
+				.andExpect(jsonPath("$.performanceTierOptions[1].caps[?(@.capAmount == 20000)].description")
+						.value("특별적립 통합 월한도(60만원 이상)"))
+				// 현재 적용 caps: 실적 무관 기본 적립(tierId null) + 최소 구간 가정(구간 1) 한도 4개
+				.andExpect(jsonPath("$.caps.length()").value(5))
+				.andExpect(jsonPath("$.caps[?(@.tierId == null)]").value(org.hamcrest.Matchers.hasSize(1)))
+				.andExpect(jsonPath("$.caps[?(@.tierId == %d)]".formatted(tierIds.get(0)))
+						.value(org.hamcrest.Matchers.hasSize(4)));
+	}
+
+	@Test
+	@DisplayName("구간 변경과 새 구간 한도를 한 요청으로 저장할 수 있고, 이전 구간 한도는 지우지 않고 선택지에 남는다")
+	void putState_changeTierAndCapsTogether() throws Exception {
+		Long userCardId = registerEverydayCheck();
+		List<Long> tierIds = everydayTierIds();
+		String state = mockMvc.perform(get("/api/v1/owned-cards/{id}/state", userCardId).param("month", MONTH))
+				.andReturn().getResponse().getContentAsString();
+		List<Number> parentIds = JsonPath.read(state, "$.performanceTierOptions[1].caps[?(@.capAmount == 20000)].capGroupId");
+		Number parentT2 = parentIds.getFirst();
+
+		mockMvc.perform(putStateRequest(userCardId,
+						("{\"month\": \"%s\", \"performance\": {\"status\": \"CONFIRMED\", \"tierId\": %d}, "
+								+ "\"caps\": [{\"capGroupId\": %d, \"remainingLimitAmount\": 15000}]}")
+								.formatted(MONTH, tierIds.get(1), parentT2.longValue())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.performanceTier.id").value(tierIds.get(1)))
+				.andExpect(jsonPath("$.caps[?(@.tierId == %d)]".formatted(tierIds.get(0))).isEmpty())
+				.andExpect(jsonPath("$.caps[?(@.capGroupId == %d)].remainingLimitAmount".formatted(parentT2.longValue()))
+						.value(org.hamcrest.Matchers.contains(15000)));
+
+		// 테스트 전체가 한 트랜잭션이라, 실제 서버처럼 요청마다 새 영속성 컨텍스트에서 상태를 읽도록 비운다.
+		entityManager.flush();
+		entityManager.clear();
+		mockMvc.perform(putStateRequest(userCardId, confirmedBody(tierIds.get(0))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.caps[?(@.capGroupId == %d)]".formatted(parentT2.longValue())).isEmpty())
+				.andExpect(jsonPath("$.performanceTierOptions[1].caps[?(@.capGroupId == %d)].remainingLimitAmount"
+						.formatted(parentT2.longValue())).value(org.hamcrest.Matchers.contains(15000)));
+	}
+
+	private Long registerEverydayCheck() throws Exception {
+		String response = mockMvc.perform(post("/api/v1/owned-cards")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": %d, \"performance\": {\"status\": \"UNKNOWN\"}}".formatted(everydayProductId())))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		return ((Number) JsonPath.read(response, "$.id")).longValue();
+	}
+
+	private Long everydayProductId() {
+		return cardProductRepository.findAll().stream()
+				.filter(product -> "CK058".equals(product.getProductKey()))
+				.findFirst().orElseThrow().getId();
+	}
+
+	private List<Long> everydayTierIds() {
+		return cardPerformanceTierRepository.findByProductIdOrderByLevelAsc(everydayProductId()).stream()
+				.map(CardPerformanceTier::getId)
+				.toList();
 	}
 
 	private Long registerStarPlus() throws Exception {
