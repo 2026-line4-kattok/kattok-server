@@ -55,7 +55,16 @@ public record ProductRules(
 			Long minPaymentAmount,
 			Long maxEligibleTxnAmount,
 			RuleConditions conditions,
-			String displayText) {
+			String displayText,
+			boolean stackable) {
+
+		/** 표시되지 않은 기존 규칙은 단독 적용한다. */
+		public Rule(Long id, Long merchantId, Long categoryId, Long requiredTierId, Long capGroupId,
+				BenefitType type, BigDecimal rate, Long fixedAmount, BigDecimal pointKrwRatio,
+				Long minPaymentAmount, Long maxEligibleTxnAmount, RuleConditions conditions, String displayText) {
+			this(id, merchantId, categoryId, requiredTierId, capGroupId, type, rate, fixedAmount, pointKrwRatio,
+					minPaymentAmount, maxEligibleTxnAmount, conditions, displayText, false);
+		}
 	}
 
 	/** 실적 구간. {@code level}이 낮을수록 낮은 구간이다. */

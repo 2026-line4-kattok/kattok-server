@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +33,7 @@ import com.kattok.server.card.entity.ConfirmationSource;
  *   <li>금액 구간, 요일, 시간대 조건이 맞는 규칙만 남긴다.</li>
  *   <li>실적 구간이 맞는 규칙만 남긴다. 실적을 모르면 혜택을 받는 가장 낮은 구간으로 가정한다.</li>
  *   <li>규칙마다 혜택을 계산하고 한도 그룹과 그 상위 한도를 모두 적용한다. 남은 한도를 모르면 전체 한도로 가정한다.</li>
- *   <li>혜택은 중복되지 않으므로 가장 큰 규칙 하나만 적용한다.</li>
+ *   <li>기존 규칙은 최대 하나, 명시된 stackable 규칙끼리는 공유 한도를 적용해 합산하고 더 유리한 결과를 고른다.</li>
  * </ol>
  */
 public class BenefitCalculator {
@@ -72,9 +73,10 @@ public class BenefitCalculator {
 			return result(product, card, Status.NO_BENEFIT, null, NoBenefitReason.PERFORMANCE_NOT_MET);
 		}
 
-		Candidate best = performanceMet.stream()
+		List<Candidate> candidates = performanceMet.stream()
 				.map(rule -> evaluate(rule, product, card, payment, performanceUnknown))
-				.max(Comparator.comparingLong(Candidate::benefit)
+				.toList();
+		Candidate best = candidates.stream().max(Comparator.comparingLong(Candidate::benefit)
 						.thenComparing(candidate -> -candidate.assumptions().size())
 						.thenComparing(candidate -> -candidate.rule().id()))
 				.orElseThrow();
@@ -83,19 +85,61 @@ public class BenefitCalculator {
 			NoBenefitReason reason = best.limited() ? NoBenefitReason.LIMIT_EXHAUSTED : NoBenefitReason.CONDITION_NOT_MET;
 			return result(product, card, Status.NO_BENEFIT, null, reason);
 		}
-		Status status = best.assumptions().isEmpty() ? Status.CONFIRMED : Status.CONDITIONAL;
+		List<Candidate> selected = List.of(best);
+		List<Candidate> stacked = stacked(candidates, product, card, payment, performanceUnknown);
+		long stackedAmount = stacked.stream().mapToLong(Candidate::benefit).reduce(0, Math::addExact);
+		Set<Assumption> stackedAssumptions = assumptionsOf(stacked);
+		if (stackedAmount > best.benefit() || stackedAmount == best.benefit()
+				&& stackedAssumptions.size() < best.assumptions().size()) {
+			selected = stacked;
+		}
+		selected = selected.stream().sorted(Comparator.comparingLong(Candidate::benefit).reversed()
+				.thenComparing(candidate -> candidate.rule().id())).toList();
+		Candidate representative = selected.getFirst();
+		Set<Assumption> assumptions = assumptionsOf(selected);
+		LimitSource source = selected.stream().map(Candidate::limitSource)
+				.reduce(LimitSource.NONE, BenefitCalculator::worse);
+		long total = selected.stream().mapToLong(Candidate::benefit).reduce(0, Math::addExact);
+		Status status = assumptions.isEmpty() ? Status.CONFIRMED : Status.CONDITIONAL;
 		return new CardBenefitResult(
 				card.userCardId(),
 				status,
-				best.benefit(),
-				best.rule().id(),
-				best.rule().displayText(),
-				List.copyOf(best.assumptions()),
-				best.limitSource(),
+				total,
+				representative.rule().id(),
+				representative.rule().displayText(),
+				List.copyOf(assumptions),
+				source,
 				null,
-				requiredPerformance(best.rule(), product.tiers()),
+				selected.stream().mapToLong(candidate -> requiredPerformance(candidate.rule(), product.tiers())).max().orElse(0),
 				product.annualFee(),
-				card.registrationOrder());
+				card.registrationOrder(),
+				selected.stream().map(candidate -> new CardBenefitResult.AppliedBenefit(candidate.rule().id(), candidate.benefit())).toList());
+	}
+
+	/** 명시된 규칙만 합산한다. 공유 금액은 배분하고 공유 횟수는 동일 거래에서 중복 소비하지 않는다. */
+	private List<Candidate> stacked(List<Candidate> candidates, ProductRules product, UserCardSnapshot card,
+			PaymentContext payment, boolean performanceUnknown) {
+		List<Candidate> result = new ArrayList<>();
+		Map<Long, Long> consumed = new HashMap<>();
+		var ordered = candidates.stream().filter(candidate -> candidate.rule().stackable() && candidate.benefit() > 0)
+				.sorted(Comparator.comparingLong(Candidate::benefit).reversed()
+						.thenComparingInt(candidate -> candidate.assumptions().size())
+						.thenComparing(candidate -> candidate.rule().id())).toList();
+		for (Candidate initial : ordered) {
+			Candidate allocated = evaluate(initial.rule(), product, card, payment, performanceUnknown, consumed);
+			if (allocated.benefit() <= 0) continue;
+			result.add(allocated);
+			for (Long id : BenefitDetails.capGroupIds(initial.rule(), product)) {
+				consumed.merge(id, allocated.benefit(), Math::addExact);
+			}
+		}
+		return result;
+	}
+
+	private static Set<Assumption> assumptionsOf(List<Candidate> candidates) {
+		Set<Assumption> result = EnumSet.noneOf(Assumption.class);
+		candidates.forEach(candidate -> result.addAll(candidate.assumptions()));
+		return result;
 	}
 
 	private boolean targets(Rule rule, PaymentContext payment) {
@@ -132,6 +176,11 @@ public class BenefitCalculator {
 
 	private Candidate evaluate(
 			Rule rule, ProductRules product, UserCardSnapshot card, PaymentContext payment, boolean performanceUnknown) {
+		return evaluate(rule, product, card, payment, performanceUnknown, Map.of());
+	}
+
+	private Candidate evaluate(Rule rule, ProductRules product, UserCardSnapshot card, PaymentContext payment,
+			boolean performanceUnknown, Map<Long, Long> consumed) {
 		Set<Assumption> assumptions = EnumSet.noneOf(Assumption.class);
 		if (performanceUnknown && rule.requiredTierId() != null) {
 			assumptions.add(Assumption.PERFORMANCE_ASSUMED_LOWEST_TIER);
@@ -153,14 +202,15 @@ public class BenefitCalculator {
 			if (cap.limitsCount()) {
 				Integer remainingCount = state == null ? null : state.remainingCount();
 				if (remainingCount == null) {
+					remainingCount = cap.capCount();
 					assumptions.add(Assumption.LIMIT_ASSUMED_FULL);
 					limitSource = worse(limitSource, LimitSource.ASSUMED);
 				} else {
 					limitSource = worse(limitSource, sourceOf(state.countSource()));
-					if (remainingCount <= 0) {
-						benefit = 0;
-						limited = true;
-					}
+				}
+				if (remainingCount <= 0) {
+					benefit = 0;
+					limited = true;
 				}
 			}
 			if (cap.limitsAmount()) {
@@ -172,6 +222,7 @@ public class BenefitCalculator {
 				} else {
 					limitSource = worse(limitSource, sourceOf(state.amountSource()));
 				}
+				remaining = Math.max(0, remaining - consumed.getOrDefault(capId, 0L));
 				if (remaining < benefit) {
 					benefit = Math.max(0, remaining);
 					limited = true;
