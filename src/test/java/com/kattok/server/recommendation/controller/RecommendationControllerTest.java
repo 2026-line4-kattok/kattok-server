@@ -34,6 +34,9 @@ import com.kattok.server.card.entity.UserCard;
 import com.kattok.server.card.repository.CardProductRepository;
 import com.kattok.server.card.repository.UserCardRepository;
 import com.kattok.server.merchant.entity.Merchant;
+import com.kattok.server.merchant.entity.MerchantCategory;
+import com.kattok.server.merchant.entity.MerchantChannel;
+import com.kattok.server.merchant.repository.MerchantCategoryRepository;
 import com.kattok.server.merchant.repository.MerchantRepository;
 import com.kattok.server.payment.entity.PaymentRecord;
 import com.kattok.server.payment.entity.PaymentRecordStatus;
@@ -65,6 +68,9 @@ class RecommendationControllerTest {
 
 	@Autowired
 	private MerchantRepository merchantRepository;
+
+	@Autowired
+	private MerchantCategoryRepository merchantCategoryRepository;
 
 	@Autowired
 	private RecommendationRepository recommendationRepository;
@@ -158,6 +164,35 @@ class RecommendationControllerTest {
 				.andExpect(jsonPath("$.items", hasSize(1)))
 				.andExpect(jsonPath("$.excludedCards[0].userCardId").value(unverified.getId()))
 				.andExpect(jsonPath("$.excludedCards[0].reason.type").value("UNVERIFIED_CARD"));
+	}
+
+	@Test
+	@DisplayName("혜택은 검증됐지만 실적 구간 확인이 필요한(NEEDS_CHECK) 카드는 PERFORMANCE_NEEDS_CHECK로 비교에서 빠진다")
+	void create_excludesNeedsCheckCard() throws Exception {
+		register("굿데이");
+		UserCard needsCheck = register("알파벳카드S");
+		entityManager.createNativeQuery("update card_products set performance_type = 'NEEDS_CHECK' where id = ?")
+				.setParameter(1, needsCheck.getProduct().getId())
+				.executeUpdate();
+		entityManager.clear();
+
+		create("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.items", hasSize(1)))
+				.andExpect(jsonPath("$.excludedCards[0].userCardId").value(needsCheck.getId()))
+				.andExpect(jsonPath("$.excludedCards[0].reason.type").value("PERFORMANCE_NEEDS_CHECK"));
+	}
+
+	@Test
+	@DisplayName("계산할 혜택 규칙이 없는 결제처로 추천을 요청하면 400 MERCHANT_NOT_SUPPORTED다")
+	void create_unsupportedMerchant() throws Exception {
+		register("굿데이");
+		MerchantCategory category = merchantCategoryRepository.save(new MerchantCategory("테스트업종", "TEST_CATEGORY"));
+		Merchant unsupported = merchantRepository.save(new Merchant("테스트결제처", MerchantChannel.OFFLINE, category));
+
+		create("{\"merchantId\": %d, \"amount\": 5000}".formatted(unsupported.getId()))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MERCHANT_NOT_SUPPORTED"));
 	}
 
 	@Test
