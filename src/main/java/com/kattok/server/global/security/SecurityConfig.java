@@ -22,8 +22,13 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+
+import java.util.List;
 
 /**
  * 인증은 {@code Authorization: Bearer <액세스 토큰>} 헤더로 한다. 서버는 세션을 만들지 않는다.
@@ -48,6 +53,7 @@ public class SecurityConfig {
 			HttpSecurity http, JsonErrorWriter jsonErrorWriter, AuthProperties authProperties,
 			ActiveUserJwtAuthenticationConverter activeUserConverter) throws Exception {
 		return http
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
@@ -68,6 +74,18 @@ public class SecurityConfig {
 						.authenticationEntryPoint(jsonErrorWriter)
 						.accessDeniedHandler(jsonErrorWriter))
 				.build();
+	}
+
+	/** 프론트 도메인이 아직 유동적인 해커톤 기간이라 전체 허용한다. 쿠키를 안 쓰고 Authorization 헤더만 쓰니 안전하다. */
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOriginPatterns(List.of("*"));
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("*"));
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
 	}
 
 	@Bean
