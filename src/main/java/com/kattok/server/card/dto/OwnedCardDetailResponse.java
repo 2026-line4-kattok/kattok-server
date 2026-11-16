@@ -28,7 +28,7 @@ public record OwnedCardDetailResponse(
 	public record PerformanceDetail(
 			PerformanceStatus status,
 			UserCardStateResponse.PerformanceTierOption tier,
-			List<CardProductDetailResponse.PerformanceTierDetail> options,
+			List<UserCardStateResponse.TierOption> options,
 			String baseMonth) {
 	}
 

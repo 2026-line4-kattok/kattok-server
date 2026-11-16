@@ -26,6 +26,10 @@ public record CardProductDetailResponse(
 			Long id, int level, long minAmount, String label, List<BenefitSummary> benefits) {
 	}
 
-	public record BenefitSummary(String displayText, Long capAmount, Integer capCount) {
+	/**
+	 * @param ruleId 혜택 규칙 ID
+	 * @param capGroupId 이 혜택에 직접 걸린 한도 ID. 상위 한도는 3-3의 구간별 {@code caps}에서 함께 준다.
+	 */
+	public record BenefitSummary(Long ruleId, String displayText, Long capGroupId, Long capAmount, Integer capCount) {
 	}
 }

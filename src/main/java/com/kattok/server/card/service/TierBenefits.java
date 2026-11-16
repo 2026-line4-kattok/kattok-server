@@ -72,6 +72,7 @@ final class TierBenefits {
 
 	private static BenefitSummary summary(Rule rule, Map<Long, Cap> caps) {
 		Cap cap = caps.get(rule.capGroupId());
-		return new BenefitSummary(rule.displayText(), cap == null ? null : cap.capAmount(), cap == null ? null : cap.capCount());
+		return new BenefitSummary(rule.id(), rule.displayText(), rule.capGroupId(),
+				cap == null ? null : cap.capAmount(), cap == null ? null : cap.capCount());
 	}
 }
