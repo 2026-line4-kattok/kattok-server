@@ -109,6 +109,62 @@ public final class BenefitDetails {
 		return List.copyOf(result);
 	}
 
+	/** 같은 한도에 연결된 혜택 금액만 합산하고, 같은 거래의 횟수는 한 번만 줄인다. */
+	public static List<CapProjection> remainingLimitsAfter(
+			CardBenefitResult result, ProductRules product, UserCardSnapshot card) {
+		java.util.Map<Long, Long> deductions = new java.util.TreeMap<>();
+		for (var applied : result.appliedBenefits()) {
+			Rule rule = appliedRule(product, applied.ruleId());
+			for (Long id : capGroupIds(rule, product)) {
+				deductions.merge(id, applied.benefitAmount(), Math::addExact);
+			}
+		}
+		List<CapProjection> projections = new ArrayList<>();
+		for (var entry : deductions.entrySet()) {
+			Cap cap = product.caps().get(entry.getKey());
+			if (!cap.limitsAmount() && !cap.limitsCount()) continue;
+			CapState state = card.caps().get(cap.id());
+			Long amount = state == null ? null : state.remainingAmount();
+			Integer count = state == null ? null : state.remainingCount();
+			Long beforeAmount = cap.limitsAmount() ? (amount == null ? cap.capAmount() : amount) : null;
+			Integer beforeCount = cap.limitsCount() ? (count == null ? cap.capCount() : count) : null;
+			projections.add(new CapProjection(cap.id(), cap.description(), cap.capPeriod(), cap.capAmount(), cap.capCount(),
+					beforeAmount, beforeAmount == null ? null : Math.max(0, beforeAmount - entry.getValue()),
+					beforeCount, beforeCount == null ? null : Math.max(0, beforeCount - 1),
+					!cap.limitsAmount() ? null : amount == null ? LimitSource.ASSUMED : sourceOf(state.amountSource()),
+					!cap.limitsCount() ? null : count == null ? LimitSource.ASSUMED : sourceOf(state.countSource())));
+		}
+		return List.copyOf(projections);
+	}
+
+	public static List<AssumptionTarget> assumptionTargets(
+			CardBenefitResult result, ProductRules product, UserCardSnapshot card) {
+		Set<AssumptionTarget> targets = new HashSet<>();
+		for (var applied : result.appliedBenefits()) {
+			targets.addAll(assumptionTargets(result, appliedRule(product, applied.ruleId()), product, card));
+		}
+		return targets.stream().sorted(Comparator.comparing(AssumptionTarget::type)
+				.thenComparing(AssumptionTarget::capGroupId, Comparator.nullsFirst(Comparator.naturalOrder()))).toList();
+	}
+
+	public static Rule appliedRule(ProductRules product, Long ruleId) {
+		return product.rules().stream().filter(rule -> rule.id().equals(ruleId)).findFirst().orElseThrow();
+	}
+
+	/** 호환 필드는 대표 혜택에 연결된 한도의 합산 후 잔여를 표시한다. */
+	public static RemainingLimit remainingLimitAfter(
+			CardBenefitResult result, ProductRules product, UserCardSnapshot card) {
+		if (result.appliedRuleId() == null) return null;
+		Set<Long> representativeCaps = new HashSet<>(capGroupIds(appliedRule(product, result.appliedRuleId()), product));
+		var projections = remainingLimitsAfter(result, product, card).stream()
+				.filter(p -> representativeCaps.contains(p.capGroupId()) && p.capAmount() != null).toList();
+		if (projections.isEmpty()) return null;
+		long amount = projections.stream().mapToLong(CapProjection::remainingLimitAmount).min().orElseThrow();
+		LimitSource source = projections.stream().map(CapProjection::amountSource)
+				.max(Comparator.naturalOrder()).orElse(LimitSource.NONE);
+		return new RemainingLimit(amount, source);
+	}
+
 	public static List<AssumptionTarget> assumptionTargets(
 			CardBenefitResult result, Rule rule, ProductRules product, UserCardSnapshot card) {
 		Set<AssumptionType> types = assumptionTypes(result, rule, product, card);

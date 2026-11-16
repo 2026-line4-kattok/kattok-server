@@ -94,6 +94,10 @@ public class BenefitRule {
 	@Column(name = "display_text")
 	private String displayText;
 
+	/** 약관으로 중복 적용을 확인한 규칙만 true. 기존 규칙과 이미 합산된 요율은 기본 false를 유지한다. */
+	@Column(nullable = false)
+	private boolean stackable;
+
 	/** 제외 업종·채널·결제수단 등. 최소 키: channel, requireAppRegistration, excludedSubmerchants, timeRange, daysOfWeek, installmentExcluded */
 	@JdbcTypeCode(SqlTypes.JSON)
 	private Map<String, Object> conditions;

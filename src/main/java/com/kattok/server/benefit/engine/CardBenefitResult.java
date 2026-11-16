@@ -16,6 +16,7 @@ import java.util.List;
  * @param requiredPerformance 적용한 혜택에 필요한 실적(원). 실적 조건이 없으면 0. 동점 비교에 쓴다.
  * @param annualFee 연회비(원). 모르면 {@code null}. 동점 비교에 쓴다.
  * @param registrationOrder 등록 순서. 동점 비교의 마지막 기준이다.
+ * @param appliedBenefits 적용된 규칙별 최종 금액. 합계가 expectedBenefit이며 0원 규칙은 제외한다.
  */
 public record CardBenefitResult(
 		Long userCardId,
@@ -28,11 +29,25 @@ public record CardBenefitResult(
 		NoBenefitReason noBenefitReason,
 		long requiredPerformance,
 		Long annualFee,
-		int registrationOrder) {
+		int registrationOrder,
+		List<AppliedBenefit> appliedBenefits) {
 
 	public CardBenefitResult {
 		assumptions = List.copyOf(assumptions);
+		appliedBenefits = List.copyOf(appliedBenefits);
 	}
+
+	/** 기존 단일 규칙 계산 결과를 같은 적용 목록으로 읽는다. */
+	public CardBenefitResult(Long userCardId, Status status, long expectedBenefit, Long appliedRuleId,
+			String appliedRuleText, List<Assumption> assumptions, LimitSource limitSource, NoBenefitReason noBenefitReason,
+			long requiredPerformance, Long annualFee, int registrationOrder) {
+		this(userCardId, status, expectedBenefit, appliedRuleId, appliedRuleText, assumptions, limitSource,
+				noBenefitReason, requiredPerformance, annualFee, registrationOrder,
+				appliedRuleId == null || expectedBenefit <= 0 ? List.of()
+						: List.of(new AppliedBenefit(appliedRuleId, expectedBenefit)));
+	}
+
+	public record AppliedBenefit(Long ruleId, long benefitAmount) {}
 
 	public boolean calculable() {
 		return status != Status.NOT_CALCULABLE;
