@@ -40,13 +40,18 @@ public class BenefitCalculator {
 	private static final Set<BenefitType> SUPPORTED_TYPES = EnumSet.of(
 			BenefitType.DISCOUNT_RATE, BenefitType.DISCOUNT_FIXED, BenefitType.POINT_RATE, BenefitType.POINT_FIXED);
 
+	/** 이 엔진이 계산하는 혜택 유형인지. 원화로 환산할 수 없는 마일리지는 계산하지 않는다. */
+	public static boolean supports(BenefitType type) {
+		return SUPPORTED_TYPES.contains(type);
+	}
+
 	public CardBenefitResult calculate(ProductRules product, UserCardSnapshot card, PaymentContext payment) {
 		if (!product.calculable()) {
 			return result(product, card, Status.NOT_CALCULABLE, null, null);
 		}
 
 		List<Rule> targeted = product.rules().stream()
-				.filter(rule -> SUPPORTED_TYPES.contains(rule.type()))
+				.filter(rule -> supports(rule.type()))
 				.filter(rule -> targets(rule, payment))
 				.toList();
 		if (targeted.isEmpty()) {
