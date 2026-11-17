@@ -12,7 +12,7 @@ import com.kattok.server.benefit.entity.CapPeriod;
  *
  * @param productId 카드 상품 id
  * @param calculable 데이터 상태가 '계산 가능'인지. 아니면 이 카드는 계산하지 않는다.
- * @param annualFee 연회비(원). 모르면 {@code null}이고, 동점 비교에서 가장 뒤로 둔다.
+ * @param annualFee 연회비(원). 모르면 {@code null}이고, 동점 묶음에 이런 카드가 있으면 연회비 비교를 건너뛴다.
  * @param rules 검증된 혜택 규칙
  * @param tiers 실적 구간 id별 정의. 규칙이 요구하는 구간만 들어 있어도 된다.
  * @param caps 한도 그룹 id별 정의. 상위 한도도 포함한다.
