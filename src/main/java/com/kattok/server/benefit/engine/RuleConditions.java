@@ -12,6 +12,9 @@ import java.util.Set;
 /**
  * {@code benefit_rules.conditions}(jsonb)에서 계산 엔진이 읽는 조건. 키 목록은 노션 「백엔드 역할 분담」의
  * 「개발 시작 전 결정」 표를 따르고, 목록에 없는 키(예: {@code channel})는 읽지 않는다.
+ *
+ * <p>{@code merchantIds}는 표 이후에 추가했다. 업종 규칙을 그 업종의 일부 결제처로 좁힌다(예: 커피전문점 중
+ * 스타벅스·커피빈만). 결제처를 고르지 않고 업종만 고른 결제에는 적용하지 않는다.
  */
 public record RuleConditions(
 		boolean allMerchants,
@@ -19,14 +22,17 @@ public record RuleConditions(
 		Set<Long> excludedMerchantIds,
 		Set<DayOfWeek> daysOfWeek,
 		TimeRange timeRange,
-		Long maxPaymentAmount) {
+		Long maxPaymentAmount,
+		Set<Long> merchantIds) {
 
-	public static final RuleConditions NONE = new RuleConditions(false, Set.of(), Set.of(), Set.of(), null, null);
+	public static final RuleConditions NONE =
+			new RuleConditions(false, Set.of(), Set.of(), Set.of(), null, null, Set.of());
 
 	public RuleConditions {
 		excludedCategoryIds = Set.copyOf(excludedCategoryIds);
 		excludedMerchantIds = Set.copyOf(excludedMerchantIds);
 		daysOfWeek = daysOfWeek.isEmpty() ? Set.of() : Set.copyOf(EnumSet.copyOf(daysOfWeek));
+		merchantIds = Set.copyOf(merchantIds);
 	}
 
 	public static RuleConditions from(Map<String, Object> raw) {
@@ -39,7 +45,8 @@ public record RuleConditions(
 				toIds(raw.get("excludedMerchantIds")),
 				toDays(raw.get("daysOfWeek")),
 				toTimeRange(raw.get("timeRange")),
-				raw.get("maxPaymentAmount") instanceof Number n ? n.longValue() : null);
+				raw.get("maxPaymentAmount") instanceof Number n ? n.longValue() : null,
+				toIds(raw.get("merchantIds")));
 	}
 
 	/** 결제 금액 상한, 요일, 시간대 조건을 모두 만족하는지 본다. */
@@ -56,7 +63,8 @@ public record RuleConditions(
 
 	boolean excludes(PaymentContext payment) {
 		return excludedCategoryIds.contains(payment.categoryId())
-				|| (payment.merchantId() != null && excludedMerchantIds.contains(payment.merchantId()));
+				|| (payment.merchantId() != null && excludedMerchantIds.contains(payment.merchantId()))
+				|| (!merchantIds.isEmpty() && (payment.merchantId() == null || !merchantIds.contains(payment.merchantId())));
 	}
 
 	private static Set<Long> toIds(Object value) {

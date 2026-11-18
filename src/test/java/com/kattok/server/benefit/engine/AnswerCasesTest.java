@@ -111,6 +111,21 @@ class AnswerCasesTest {
 	}
 
 	@Test
+	@DisplayName("회귀(V33): 스타플러스 체크 스타벅스·커피빈 10%는 스타벅스 1만원에 1,000원, 메가MGC커피·업종 칩 '카페'는 0원")
+	void regressionBrandLimitedCafeBenefit() {
+		String starPlus = "CK057";
+		CardBenefitResult atStarbucks = single(starPlus, PerformanceState.unknown(), starbucks(10000, wednesday(14)));
+		CardBenefitResult atMegaCoffee = single(starPlus, PerformanceState.unknown(),
+				PaymentContext.atMerchant(merchantId("메가MGC커피"), categoryId("CAFE"), 10000, wednesday(14)));
+		CardBenefitResult byCafeChip = single(starPlus, PerformanceState.unknown(),
+				PaymentContext.inCategory(categoryId("CAFE"), 10000, wednesday(14)));
+
+		assertThat(atStarbucks.expectedBenefit()).isEqualTo(1000);
+		assertThat(atMegaCoffee.expectedBenefit()).isZero();
+		assertThat(byCafeChip.expectedBenefit()).isZero();
+	}
+
+	@Test
 	@DisplayName("5. Mr.Life 50만원 구간, GS25 2만원: 1회 1만원까지만 할인해 1,000원 확정")
 	void case5() {
 		// GS25 결제처 데이터가 아직 없어 같은 업종(편의점)으로 계산한다. Mr.Life 편의점 혜택은 업종 전체 대상이라 결과가 같다.
