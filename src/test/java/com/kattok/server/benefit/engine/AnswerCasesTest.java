@@ -101,6 +101,16 @@ class AnswerCasesTest {
 	}
 
 	@Test
+	@DisplayName("회귀(V31): 알파벳카드S 40만원 구간, 쿠팡 5만원: 할부 조건 검증 불가해 빼서 0원")
+	void regressionAlphabetSCoupangUnverified() {
+		CardBenefitResult result = single(ALPHABET_S, tier(ALPHABET_S, 1),
+				PaymentContext.atMerchant(merchantId("쿠팡"), categoryId("ONLINE_SHOPPING"), 50000, wednesday(14)));
+
+		assertThat(result.expectedBenefit()).isZero();
+		assertThat(result.status()).isEqualTo(Status.NO_BENEFIT);
+	}
+
+	@Test
 	@DisplayName("5. Mr.Life 50만원 구간, GS25 2만원: 1회 1만원까지만 할인해 1,000원 확정")
 	void case5() {
 		// GS25 결제처 데이터가 아직 없어 같은 업종(편의점)으로 계산한다. Mr.Life 편의점 혜택은 업종 전체 대상이라 결과가 같다.
