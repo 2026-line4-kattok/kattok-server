@@ -204,7 +204,9 @@ public class OwnedCardService {
 								&& rule.requiredTierId().equals(confirmedTierId)))
 				.toList();
 
+		// 표시 문구가 없는 규칙은 대표로 고르지 않는다. 문구가 없다고 목록 한 줄이 비거나 다른 혜택이 가려지면 안 된다.
 		String representativeBenefit = applicableRules.stream()
+				.filter(rule -> rule.displayText() != null && !rule.displayText().isBlank())
 				.max(Comparator.comparing(rule -> capRank(rules.caps().get(rule.capGroupId()))))
 				.map(Rule::displayText)
 				.orElse(null);
