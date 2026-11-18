@@ -136,7 +136,7 @@ class BenefitCalculatorTest {
 	@Test
 	@DisplayName("혜택은 중복되지 않아 카드 안에서 가장 큰 혜택 하나만 적용한다")
 	void picksLargestRuleOnly() {
-		RuleConditions all = new RuleConditions(true, Set.of(), Set.of(), Set.of(), null, null);
+		RuleConditions all = new RuleConditions(true, Set.of(), Set.of(), Set.of(), null, null, Set.of());
 		Rule allMerchants = new Rule(1L, null, null, null, 10L, BenefitType.POINT_RATE, new BigDecimal("0.005"),
 				null, BigDecimal.ONE, null, null, all, "전 가맹점 0.5%");
 		Rule cafe = categoryRule(2L, CAFE, 10L, "0.02");
@@ -152,7 +152,7 @@ class BenefitCalculatorTest {
 	@Test
 	@DisplayName("1원 미만은 버린다")
 	void truncatesBelowOneWon() {
-		RuleConditions all = new RuleConditions(true, Set.of(), Set.of(), Set.of(), null, null);
+		RuleConditions all = new RuleConditions(true, Set.of(), Set.of(), Set.of(), null, null, Set.of());
 		Rule rule = new Rule(1L, null, null, null, 10L, BenefitType.DISCOUNT_RATE, new BigDecimal("0.007"),
 				null, null, null, null, all, "0.7%");
 		ProductRules product = product(List.of(rule), Map.of(10L, new Cap(10L, null, null, null)));
@@ -175,6 +175,28 @@ class BenefitCalculatorTest {
 
 		assertThat(byCategory.noBenefitReason()).isEqualTo(NoBenefitReason.NO_MATCHING_RULE);
 		assertThat(byMerchant.expectedBenefit()).isEqualTo(500);
+	}
+
+	@Test
+	@DisplayName("업종 규칙에 결제처 목록이 있으면 그 결제처에서만 적용하고, 업종만 고르면 적용하지 않는다")
+	void merchantIdsNarrowCategoryRule() {
+		long megaCoffee = 101L;
+		RuleConditions starbucksOnly = RuleConditions.from(Map.of("merchantIds", List.of(STARBUCKS)));
+		Rule rule = new Rule(1L, null, CAFE, null, 10L, BenefitType.DISCOUNT_RATE, new BigDecimal("0.20"),
+				null, null, null, null, starbucksOnly, "스타벅스 20%");
+		ProductRules product = product(List.of(rule), Map.of(10L, new Cap(10L, null, null, null)));
+		UserCardSnapshot card = noTier(snapshot(null, Map.of()));
+
+		CardBenefitResult atStarbucks = calculator.calculate(product, card,
+				PaymentContext.atMerchant(STARBUCKS, CAFE, 10000, WEDNESDAY_2PM));
+		CardBenefitResult atMegaCoffee = calculator.calculate(product, card,
+				PaymentContext.atMerchant(megaCoffee, CAFE, 10000, WEDNESDAY_2PM));
+		CardBenefitResult byCategory = calculator.calculate(product, card,
+				PaymentContext.inCategory(CAFE, 10000, WEDNESDAY_2PM));
+
+		assertThat(atStarbucks.expectedBenefit()).isEqualTo(2000);
+		assertThat(atMegaCoffee.noBenefitReason()).isEqualTo(NoBenefitReason.NO_MATCHING_RULE);
+		assertThat(byCategory.noBenefitReason()).isEqualTo(NoBenefitReason.NO_MATCHING_RULE);
 	}
 
 	@Test
