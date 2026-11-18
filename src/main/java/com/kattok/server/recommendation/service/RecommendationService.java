@@ -159,9 +159,11 @@ public class RecommendationService {
 
 	/**
 	 * [○○로 결제할게요]를 누르면 결제 확인 대기 기록을 만든다(명세 1-3). 결제 완료가 아니고, 같은 추천으로 여러 번 불러도 1건이다.
+	 *
+	 * @param chosenUserCardId 비교 결과 중 추천과 다른 카드로 하기로 했으면 그 카드. 그대로면 {@code null}
 	 */
 	@Transactional
-	public void confirm(Long recommendationId) {
+	public void confirm(Long recommendationId, Long chosenUserCardId) {
 		Long userId = currentUserProvider.get().getId();
 		mutationGuard.lock(userId);
 		Recommendation recommendation = recommendationRepository.findWithLockByIdAndUserId(recommendationId, userId)
@@ -169,8 +171,22 @@ public class RecommendationService {
 		if (!recommendation.hasRecommendedCard()) {
 			throw ApiException.conflict("NO_RECOMMENDED_CARD", "추천 카드가 없는 결과라 결제 확인을 만들 수 없습니다.");
 		}
+		if (chosenUserCardId != null) {
+			chooseCard(recommendationId, chosenUserCardId);
+		}
 		recommendation.confirm();
 		paymentRecordService.createPendingIfAbsent(recommendation);
+	}
+
+	/** 비교에 있던 다른 카드를 새 대표로 바꾼다. 비교에 없던 카드는 400이다. */
+	private void chooseCard(Long recommendationId, Long chosenUserCardId) {
+		List<RecommendationItem> items = recommendationItemRepository.findByRecommendationIdOrderByIdAsc(recommendationId);
+		RecommendationItem chosen = items.stream()
+				.filter(item -> item.getUserCard().getId().equals(chosenUserCardId))
+				.findFirst()
+				.orElseThrow(() -> ApiException.invalidInput("비교 결과에 없는 카드입니다."));
+		items.stream().filter(RecommendationItem::isRecommended).forEach(item -> item.setRecommended(false));
+		chosen.setRecommended(true);
 	}
 
 	private Recommendation findOwned(Long recommendationId) {

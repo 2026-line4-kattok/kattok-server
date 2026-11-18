@@ -343,6 +343,36 @@ class RecommendationControllerTest {
 	}
 
 	@Test
+	@DisplayName("확정할 때 다른 카드를 고르면 그 카드가 새 추천 카드가 된다")
+	void confirm_choosesDifferentCard() throws Exception {
+		register("알파벳카드S");
+		UserCard goodDay = register("굿데이");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"userCardId\": %d}".formatted(goodDay.getId())))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(get("/api/v1/recommendations/{id}", id))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.recommendedUserCardId").value(goodDay.getId()));
+	}
+
+	@Test
+	@DisplayName("비교 결과에 없는 카드로 확정하려 하면 400이다")
+	void confirm_choosesCardNotInComparison() throws Exception {
+		register("알파벳카드S");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"userCardId\": 999999}"))
+				.andExpect(status().isBadRequest());
+		assertThat(paymentRecordRepository.findByRecommendationId(id)).isEmpty();
+	}
+
+	@Test
 	@DisplayName("추천 카드가 없는 결과(NO_BENEFIT)는 409 NO_RECOMMENDED_CARD이고 기록을 만들지 않는다")
 	void confirm_noRecommendedCard() throws Exception {
 		register("알파벳카드S");
