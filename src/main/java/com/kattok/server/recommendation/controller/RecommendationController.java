@@ -35,7 +35,7 @@ public class RecommendationController {
 		return recommendationService.get(id);
 	}
 
-	/** 본문 없이 호출하면 추천 1순위 카드 그대로 확정한다. {@code userCardId}를 보내면 비교 결과 중 그 카드로 바꿔서 확정한다. */
+	/** 본문 없이 호출하면 추천 카드로 결제하겠다고 확정한다. {@code userCardId}를 보내면 결제 확인 대기 기록에 그 카드를 남긴다(추천 결과는 그대로). */
 	@PostMapping("/{id}/confirm")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void confirm(@PathVariable Long id, @RequestBody(required = false) ConfirmRecommendationRequest request) {

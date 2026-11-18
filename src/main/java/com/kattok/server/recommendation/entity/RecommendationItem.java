@@ -57,11 +57,6 @@ public class RecommendationItem {
 	@Column(name = "is_recommended", nullable = false)
 	private boolean recommended;
 
-	/** 사용자가 결제 확정 시 다른 카드를 골라, 이 항목이 새 대표가 되거나 대표에서 빠질 때 쓴다. */
-	public void setRecommended(boolean recommended) {
-		this.recommended = recommended;
-	}
-
 	/** 순위. 동률이면 같은 값 */
 	@Column(name = "rank_no")
 	private Integer rankNo;

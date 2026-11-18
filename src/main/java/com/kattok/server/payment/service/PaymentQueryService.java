@@ -66,7 +66,7 @@ public class PaymentQueryService {
 						benefit(snapshot, card.userCardId()))).toList();
 		return new Options(record.recommendationId(), record.result(), record.merchant(), record.category(),
 				record.amount(), record.recommendedCard(), record.userCard(), record.savedBenefit(),
-				record.recommendedAt(), record.confirmedAt(), options);
+				record.recommendedAt(), record.confirmedAt(), record.chosenCard(), options);
 	}
 
 	public History history(String monthText, Long userCardId) {
@@ -116,7 +116,15 @@ public class PaymentQueryService {
 						.map(item -> item.productName()).findFirst().orElseGet(() -> cards.owned(userId, actualId).productName())));
 		return new PaymentResponses.Record(snapshot.id(), payment.getStatus().name(), snapshot.merchant(), snapshot.category(),
 				snapshot.amount(), recommended, actual, resolvedBenefit(payment, snapshot, actualId),
-				snapshot.createdAt(), payment.getConfirmedAt());
+				snapshot.createdAt(), payment.getConfirmedAt(), chosen(payment, snapshot));
+	}
+
+	/** 결제 확인 전에 추천 결과 화면에서 고른 다른 카드. 이름은 추천 당시 비교 결과에서 읽는다. */
+	private static Card chosen(PaymentRecord payment, RecommendationResponse snapshot) {
+		if (payment.getChosenUserCard() == null) return null;
+		Long id = payment.getChosenUserCard().getId();
+		return new Card(id, snapshot.items().stream().filter(item -> item.userCardId().equals(id))
+				.map(Item::productName).findFirst().orElse(null));
 	}
 
 	/** 전체 기간 요약. 최신 저장 금액은 그대로, 이전 기록만 당시 추천에서 읽으며 카드 메타데이터는 조회하지 않는다. */
