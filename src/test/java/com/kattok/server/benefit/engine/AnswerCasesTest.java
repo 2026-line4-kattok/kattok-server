@@ -188,6 +188,16 @@ class AnswerCasesTest {
 		assertThat(result.cards().get(1).expectedBenefit()).isZero();
 	}
 
+	@Test
+	@DisplayName("데이터: 알파벳카드S 쿠팡 기본 10%는 온라인·일시불 조건을 판정할 수 없어 추천에서 빠진다 (V31)")
+	void alphabetCoupangExcluded() {
+		CardBenefitResult result = single(ALPHABET_S, tier(ALPHABET_S, 1),
+				PaymentContext.atMerchant(merchantId("쿠팡"), categoryId("ONLINE_SHOPPING"), 50000, wednesday(14)));
+
+		assertThat(result.expectedBenefit()).isZero();
+		assertThat(result.status()).isEqualTo(Status.NO_BENEFIT);
+	}
+
 	private CardBenefitResult single(String productKey, PerformanceState performance, PaymentContext payment) {
 		return recommend(List.of(new CardSetup(productKey, performance, null)), payment).cards().getFirst();
 	}
