@@ -44,7 +44,7 @@ jobs:
           host: ${{ env.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: DB_PASSWORD
+          envs: DB_PASSWORD,JWT_SECRET,DEMO_USER_PASSWORD
           script: |
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.ecr-login.outputs.registry }}
             docker pull ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
@@ -54,6 +54,11 @@ jobs:
               -e SPRING_DATASOURCE_URL=jdbc:postgresql://kattok-postgres:5432/kattok \
               -e SPRING_DATASOURCE_USERNAME=kattok \
               -e SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              -e JWT_SECRET=$JWT_SECRET \
+              -e DEMO_USER_PASSWORD=$DEMO_USER_PASSWORD \
               ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DEMO_USER_PASSWORD: ${{ secrets.DEMO_USER_PASSWORD }}
