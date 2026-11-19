@@ -126,6 +126,20 @@ class AnswerCasesTest {
 	}
 
 	@Test
+	@DisplayName("회귀(V34): BC 바로 KaPick 15만원 구간, 메가MGC커피 1만원은 먹픽 7%로 700원, 대상 밖인 투썸플레이스는 0원")
+	void regressionKaPickCoffee() {
+		String kaPick = "CT04";
+		CardBenefitResult atMegaCoffee = single(kaPick, tier(kaPick, 1),
+				PaymentContext.atMerchant(merchantId("메가MGC커피"), categoryId("CAFE"), 10000, wednesday(14)));
+		CardBenefitResult atTwosome = single(kaPick, tier(kaPick, 1),
+				PaymentContext.atMerchant(merchantId("투썸플레이스"), categoryId("CAFE"), 10000, wednesday(14)));
+
+		assertThat(atMegaCoffee.expectedBenefit()).isEqualTo(700);
+		assertThat(atMegaCoffee.status()).isEqualTo(Status.CONFIRMED);
+		assertThat(atTwosome.expectedBenefit()).isZero();
+	}
+
+	@Test
 	@DisplayName("5. Mr.Life 50만원 구간, GS25 2만원: 1회 1만원까지만 할인해 1,000원 확정")
 	void case5() {
 		// GS25 결제처 데이터가 아직 없어 같은 업종(편의점)으로 계산한다. Mr.Life 편의점 혜택은 업종 전체 대상이라 결과가 같다.
