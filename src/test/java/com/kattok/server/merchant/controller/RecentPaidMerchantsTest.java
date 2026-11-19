@@ -72,7 +72,6 @@ class RecentPaidMerchantsTest {
 		record(f,c,"2026-11-03T00:00:00Z",PaymentRecordStatus.PAID_UNREGISTERED);
 		record(f,merchant("pending"),"2026-11-06T00:00:00Z",PaymentRecordStatus.PENDING);
 		record(f,merchant("notPaid"),"2026-11-07T00:00:00Z",PaymentRecordStatus.NOT_PAID);
-		record(f,null,"2026-11-08T00:00:00Z",PaymentRecordStatus.PAID_RECOMMENDED);
 		record(fixture(),merchant("foreign"),"2026-11-09T00:00:00Z",PaymentRecordStatus.PAID_RECOMMENDED);
 		f.card().delete(); cards.flush(); // 삭제된 카드의 과거 결제도 최근 결제처에 남긴다.
 		flush();
@@ -81,6 +80,26 @@ class RecentPaidMerchantsTest {
 				.andExpect(jsonPath("$[0].id").value(c.getId())).andExpect(jsonPath("$[1].id").value(b.getId()))
 				.andExpect(jsonPath("$[2].id").value(a.getId()))
 				.andExpect(jsonPath("$[0].lastRecommendedAt").value("2026-11-03T09:00:00+09:00"));
+	}
+
+	@Test
+	void includesCategoryOnlyPaymentsGroupedByCategoryAlongsideMerchants() throws Exception {
+		Fixture f=fixture(); Merchant a=merchant("A");
+		var category=categories.findAll().getFirst();
+		record(f,a,"2026-11-01T00:00:00Z",PaymentRecordStatus.PAID_RECOMMENDED);
+		record(f,null,"2026-11-02T00:00:00Z",PaymentRecordStatus.PAID_RECOMMENDED);
+		record(f,null,"2026-11-03T00:00:00Z",PaymentRecordStatus.PAID_OTHER);
+		record(f,null,"2026-11-05T00:00:00Z",PaymentRecordStatus.NOT_PAID);
+		flush();
+		mvc.perform(get("/api/v1/merchants/recent").header(HttpHeaders.AUTHORIZATION,f.auth()))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].type").value("CATEGORY"))
+				.andExpect(jsonPath("$[0].id").doesNotExist())
+				.andExpect(jsonPath("$[0].category.id").value(category.getId()))
+				.andExpect(jsonPath("$[0].name").isNotEmpty())
+				.andExpect(jsonPath("$[0].lastRecommendedAt").value("2026-11-03T09:00:00+09:00"))
+				.andExpect(jsonPath("$[1].type").value("MERCHANT"))
+				.andExpect(jsonPath("$[1].id").value(a.getId()));
 	}
 
 	@Test

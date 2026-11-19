@@ -7,7 +7,7 @@ public record MerchantResponse(
 		Long id, String name, MerchantChannel channel, CategorySummary category, boolean supported,
 		String unsupportedReason) {
 
-	private static final String UNSUPPORTED_REASON = "카똑이 아직 계산하지 않는 곳";
+	static final String UNSUPPORTED_REASON = "카똑이 아직 계산하지 않는 곳";
 
 	public static MerchantResponse of(Merchant merchant, boolean supported) {
 		return new MerchantResponse(

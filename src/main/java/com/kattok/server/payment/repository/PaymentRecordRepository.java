@@ -49,6 +49,23 @@ public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, Lo
 	List<RecentMerchantProjection> findRecentMerchants(@Param("userId") Long userId,
 			@Param("paidResults") Collection<PaymentRecordStatus> paidResults, Pageable pageable);
 
+	/** 결제처 없이 업종으로만 고른 결제 완료 기록을 업종별로 집계한다. */
+	@Query("""
+			select r.category.id as categoryId, max(r.createdAt) as lastRecommendedAt
+			from PaymentRecord p join p.recommendation r
+			where p.user.id = :userId and r.user.id = :userId
+			and p.status in :paidResults and r.merchant is null
+			group by r.category.id
+			order by max(r.createdAt) desc, r.category.id asc
+			""")
+	List<RecentCategoryProjection> findRecentCategories(@Param("userId") Long userId,
+			@Param("paidResults") Collection<PaymentRecordStatus> paidResults, Pageable pageable);
+
+	interface RecentCategoryProjection {
+		Long getCategoryId();
+		Instant getLastRecommendedAt();
+	}
+
 	interface RecentMerchantProjection {
 		Long getMerchantId();
 		Instant getLastRecommendedAt();
