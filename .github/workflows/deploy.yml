@@ -58,6 +58,18 @@ jobs:
               -e JWT_SECRET=$JWT_SECRET \
               -e DEMO_USER_PASSWORD=$DEMO_USER_PASSWORD \
               ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+            # docker run은 컨테이너만 띄우고 바로 끝나서, 서버가 시작하다 실패해도 배포가 성공으로 보인다.
+            # 서버가 정상 응답할 때까지 최대 3분 기다리고, 끝내 응답이 없으면 로그를 남기고 실패시킨다.
+            for i in $(seq 1 36); do
+              if curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1; then
+                echo "서버 정상 응답 (약 $((i * 5))초)"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "서버가 3분 안에 정상 응답하지 않았습니다. 최근 로그:"
+            docker logs --tail 100 kattok-server
+            exit 1
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
