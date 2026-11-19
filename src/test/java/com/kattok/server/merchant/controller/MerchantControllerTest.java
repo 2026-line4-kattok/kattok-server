@@ -184,8 +184,8 @@ class MerchantControllerTest {
 	}
 
 	@Test
-	@DisplayName("업종만 고른 추천(결제처 없음)은 최근 결제한 곳에서 빠진다")
-	void recent_excludesCategoryOnlyRecommendation() throws Exception {
+	@DisplayName("업종만 고른 추천(결제처 없음)도 최근 결제한 곳에 업종 항목으로 나온다")
+	void recent_includesCategoryOnlyRecommendation() throws Exception {
 		User demoUser = userRepository.findByEmail("demo@kattok.app").orElseThrow();
 		Merchant starbucks = merchantByKeyword("스타벅스");
 
@@ -199,7 +199,12 @@ class MerchantControllerTest {
 
 		mockMvc.perform(get("/api/v1/merchants/recent"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(0));
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].type").value("CATEGORY"))
+				.andExpect(jsonPath("$[0].id").doesNotExist())
+				.andExpect(jsonPath("$[0].name").value("카페"))
+				.andExpect(jsonPath("$[0].category.id").value(starbucks.getCategory().getId()))
+				.andExpect(jsonPath("$[0].supported").value(true));
 	}
 
 	private Merchant merchantByKeyword(String keyword) {

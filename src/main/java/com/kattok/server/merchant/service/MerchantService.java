@@ -50,9 +50,13 @@ public class MerchantService {
 		return CATEGORY_DISPLAY_ORDER.stream()
 				.map(categoriesByCode::get)
 				.filter(Objects::nonNull)
-				.map(category -> new MerchantCategoryResponse(category.getId(),
-						category.getCode().equals("CAFE") ? "카페" : category.getName()))
+				.map(category -> new MerchantCategoryResponse(category.getId(), displayName(category)))
 				.toList();
+	}
+
+	/** 업종으로 고르기 화면에 보이는 이름. */
+	private static String displayName(MerchantCategory category) {
+		return category.getCode().equals("CAFE") ? "카페" : category.getName();
 	}
 
 	public List<MerchantResponse> search(String keyword) {
@@ -71,7 +75,7 @@ public class MerchantService {
 		return productRulesReader.isSupported(merchant.getId(), merchant.getCategory().getId());
 	}
 
-	/** 추천 입력 화면에서 다시 검색하지 않고 바로 고를 수 있게, 최근 결제한 곳을 최근 순으로 최대 3개 준다. */
+	/** 추천 입력 화면에서 다시 검색하지 않고 바로 고를 수 있게, 최근 결제한 곳(결제처 또는 업종)을 최근 순으로 최대 3개 준다. */
 	public List<RecentMerchantResponse> recent() {
 		Long userId = currentUserProvider.get().getId();
 		var recent = recentMerchantReader.recentMerchants(userId, RECENT_MERCHANT_LIMIT);
@@ -79,14 +83,24 @@ public class MerchantService {
 			return List.of();
 		}
 
-		Map<Long, Merchant> merchantsById = merchantRepository.findAllById(recent.stream().map(row -> row.merchantId()).toList()).stream()
+		Map<Long, Merchant> merchantsById = merchantRepository.findAllById(recent.stream()
+				.map(row -> row.merchantId()).filter(Objects::nonNull).toList()).stream()
 				.collect(Collectors.toMap(Merchant::getId, Function.identity()));
+		Map<Long, MerchantCategory> categoriesById = merchantCategoryRepository.findAllById(recent.stream()
+				.filter(row -> row.merchantId() == null).map(row -> row.categoryId()).toList()).stream()
+				.collect(Collectors.toMap(MerchantCategory::getId, Function.identity()));
 		return recent.stream()
-				.filter(row -> merchantsById.containsKey(row.merchantId()))
 				.map(row -> {
+					if (row.merchantId() == null) {
+						MerchantCategory category = categoriesById.get(row.categoryId());
+						return category == null ? null : RecentMerchantResponse.ofCategory(category, displayName(category),
+								row.lastRecommendedAt(), productRulesReader.isSupported(null, category.getId()));
+					}
 					Merchant merchant = merchantsById.get(row.merchantId());
-					return RecentMerchantResponse.from(merchant, row.lastRecommendedAt(), isSupported(merchant));
+					return merchant == null ? null
+							: RecentMerchantResponse.from(merchant, row.lastRecommendedAt(), isSupported(merchant));
 				})
+				.filter(Objects::nonNull)
 				.toList();
 	}
 
