@@ -38,6 +38,8 @@ import com.kattok.server.global.ApiException;
 import com.kattok.server.merchant.entity.Merchant;
 import com.kattok.server.merchant.entity.MerchantCategory;
 import com.kattok.server.merchant.service.MerchantService;
+import com.kattok.server.payment.entity.PaymentRecord;
+import com.kattok.server.payment.entity.PaymentRecordStatus;
 import com.kattok.server.payment.service.PaymentRecordService;
 import com.kattok.server.recommendation.dto.CreateRecommendationRequest;
 import com.kattok.server.recommendation.dto.RecommendationResponse;
@@ -159,9 +161,14 @@ public class RecommendationService {
 
 	/**
 	 * [○○로 결제할게요]를 누르면 결제 확인 대기 기록을 만든다(명세 1-3). 결제 완료가 아니고, 같은 추천으로 여러 번 불러도 1건이다.
+	 *
+	 * 추천 결과는 추천 당시 그대로 두고, 다른 카드를 골랐으면 결제 확인 대기 기록에만 남긴다. 결제 결과를 저장하기 전에는
+	 * 다시 불러 고른 카드를 바꿀 수 있고, 저장한 뒤에 카드를 보내면 409다(결제 기록 수정은 5-2로 한다).
+	 *
+	 * @param chosenUserCardId 비교 결과 중 결제할 카드. 본문이 없거나 추천 카드면 추천 카드 그대로
 	 */
 	@Transactional
-	public void confirm(Long recommendationId) {
+	public void confirm(Long recommendationId, Long chosenUserCardId) {
 		Long userId = currentUserProvider.get().getId();
 		mutationGuard.lock(userId);
 		Recommendation recommendation = recommendationRepository.findWithLockByIdAndUserId(recommendationId, userId)
@@ -169,8 +176,29 @@ public class RecommendationService {
 		if (!recommendation.hasRecommendedCard()) {
 			throw ApiException.conflict("NO_RECOMMENDED_CARD", "추천 카드가 없는 결과라 결제 확인을 만들 수 없습니다.");
 		}
+		UserCard chosen = chosenUserCardId == null ? null : chosenCard(recommendationId, chosenUserCardId);
 		recommendation.confirm();
-		paymentRecordService.createPendingIfAbsent(recommendation);
+		PaymentRecord payment = paymentRecordService.createPendingIfAbsent(recommendation);
+		if (payment.getStatus() != PaymentRecordStatus.PENDING) {
+			if (chosenUserCardId != null) {
+				throw ApiException.conflict("PAYMENT_ALREADY_CONFIRMED",
+						"이미 결제 결과를 저장한 추천입니다. 결제 기록에서 카드를 바꿔 주세요.");
+			}
+			return;
+		}
+		payment.choose(chosen);
+	}
+
+	/** 비교 결과 중 고른 카드. 추천 카드면 {@code null}이고, 비교에 없던 카드는 400, 삭제한 카드는 404다. */
+	private UserCard chosenCard(Long recommendationId, Long chosenUserCardId) {
+		RecommendationItem item = recommendationItemRepository.findByRecommendationIdOrderByIdAsc(recommendationId).stream()
+				.filter(candidate -> candidate.getUserCard().getId().equals(chosenUserCardId))
+				.findFirst()
+				.orElseThrow(() -> ApiException.invalidInput("비교 결과에 없는 카드입니다."));
+		if (item.getUserCard().getDeletedAt() != null) {
+			throw ApiException.notFound("OWNED_CARD_NOT_FOUND", "존재하지 않는 카드입니다.");
+		}
+		return item.isRecommended() ? null : item.getUserCard();
 	}
 
 	private Recommendation findOwned(Long recommendationId) {

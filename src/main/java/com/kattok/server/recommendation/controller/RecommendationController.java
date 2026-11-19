@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kattok.server.recommendation.dto.ConfirmRecommendationRequest;
 import com.kattok.server.recommendation.dto.CreateRecommendationRequest;
 import com.kattok.server.recommendation.dto.RecommendationResponse;
 import com.kattok.server.recommendation.service.RecommendationService;
@@ -34,9 +35,10 @@ public class RecommendationController {
 		return recommendationService.get(id);
 	}
 
+	/** 본문 없이 호출하면 추천 카드로 결제하겠다고 확정한다. {@code userCardId}를 보내면 결제 확인 대기 기록에 그 카드를 남긴다(추천 결과는 그대로). */
 	@PostMapping("/{id}/confirm")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void confirm(@PathVariable Long id) {
-		recommendationService.confirm(id);
+	public void confirm(@PathVariable Long id, @RequestBody(required = false) ConfirmRecommendationRequest request) {
+		recommendationService.confirm(id, request == null ? null : request.userCardId());
 	}
 }

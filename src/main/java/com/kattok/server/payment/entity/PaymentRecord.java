@@ -56,6 +56,11 @@ public class PaymentRecord {
 	@JoinColumn(name = "actual_user_card_id")
 	private UserCard actualUserCard;
 
+	/** 결제 확인 전에 추천 결과 화면에서 고른 다른 카드(4-7). 추천 카드를 그대로 골랐으면 {@code null} */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "chosen_user_card_id")
+	private UserCard chosenUserCard;
+
 	@Column(name = "saved_benefit")
 	private Long savedBenefit;
 
@@ -77,6 +82,14 @@ public class PaymentRecord {
 		this.user = user;
 		this.recommendation = recommendation;
 		this.status = PaymentRecordStatus.PENDING;
+	}
+
+	/** 결제 확인 대기 중에 결제할 카드를 고른다. 추천 카드 그대로면 {@code null}을 넘긴다. */
+	public void choose(UserCard card) {
+		if (status != PaymentRecordStatus.PENDING) {
+			throw new IllegalStateException("결제 결과를 저장한 기록은 고른 카드를 바꿀 수 없습니다.");
+		}
+		this.chosenUserCard = card;
 	}
 
 	public void applyConfirmation(PaymentRecordStatus status, UserCard card, String cardName, Long benefit, Instant at) {

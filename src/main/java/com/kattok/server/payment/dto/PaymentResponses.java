@@ -13,10 +13,10 @@ public final class PaymentResponses {
 	public record CardOption(Long userCardId, String productName, String issuerName, Long expectedBenefit) {}
 	public record Record(Long recommendationId, String result, IdName merchant, IdName category, long amount,
 			RecommendedCard recommendedCard, Card userCard, Long savedBenefit, Instant recommendedAt,
-			Instant confirmedAt) {}
+			Instant confirmedAt, Card chosenCard) {}
 	public record Options(Long recommendationId, String result, IdName merchant, IdName category, long amount,
 			RecommendedCard recommendedCard, Card userCard, Long savedBenefit, Instant recommendedAt,
-			Instant confirmedAt, List<CardOption> cardOptions) {}
+			Instant confirmedAt, Card chosenCard, List<CardOption> cardOptions) {}
 	public record SavedBenefit(long amount, long paymentCount) {}
 	public record ByCard(Long userCardId, String productName, long amount, long paymentCount) {}
 	public record History(String month, SavedBenefit savedBenefit, List<ByCard> byCard, long pendingCount,

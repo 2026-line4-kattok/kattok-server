@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -343,6 +344,80 @@ class RecommendationControllerTest {
 	}
 
 	@Test
+	@DisplayName("확정할 때 2위 카드를 고르면 추천 결과는 그대로 두고 결제 확인 대기 기록에 고른 카드를 남긴다")
+	void confirm_choosesDifferentCard() throws Exception {
+		UserCard alphabet = register("알파벳카드S");
+		UserCard goodDay = register("굿데이");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+
+		confirmWith(id, alphabet.getId()).andExpect(status().isNoContent());
+
+		mockMvc.perform(get("/api/v1/recommendations/{id}", id))
+				.andExpect(jsonPath("$.recommendedUserCardId").value(goodDay.getId()));
+		mockMvc.perform(get("/api/v1/recommendations/{id}/payment", id))
+				.andExpect(jsonPath("$.result").value("PENDING"))
+				.andExpect(jsonPath("$.recommendedCard.userCardId").value(goodDay.getId()))
+				.andExpect(jsonPath("$.chosenCard.userCardId").value(alphabet.getId()))
+				.andExpect(jsonPath("$.chosenCard.productName").value("알파벳카드S"));
+		mockMvc.perform(get("/api/v1/payment-records/pending"))
+				.andExpect(jsonPath("$[0].chosenCard.userCardId").value(alphabet.getId()));
+	}
+
+	@Test
+	@DisplayName("결제 확인 전에는 다시 확정해 고른 카드를 바꿀 수 있고, 본문 없이 확정하거나 추천 카드를 고르면 고른 카드가 지워진다")
+	void confirm_changesChoiceWhilePending() throws Exception {
+		UserCard alphabet = register("알파벳카드S");
+		UserCard goodDay = register("굿데이");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+
+		confirmWith(id, alphabet.getId()).andExpect(status().isNoContent());
+		confirmWith(id, goodDay.getId()).andExpect(status().isNoContent());
+		mockMvc.perform(get("/api/v1/recommendations/{id}/payment", id))
+				.andExpect(jsonPath("$.chosenCard").value(org.hamcrest.Matchers.nullValue()));
+
+		confirmWith(id, alphabet.getId()).andExpect(status().isNoContent());
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id)).andExpect(status().isNoContent());
+		mockMvc.perform(get("/api/v1/recommendations/{id}/payment", id))
+				.andExpect(jsonPath("$.chosenCard").value(org.hamcrest.Matchers.nullValue()));
+		assertThat(paymentRecordRepository.findAll().stream()
+				.filter(record -> record.getRecommendation().getId().equals(id))).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("결제 결과를 저장한 뒤에는 확정으로 카드를 바꿀 수 없다(409) — 기록·추천 결과가 그대로다")
+	void confirm_cannotChangeCardAfterPaymentSaved() throws Exception {
+		UserCard alphabet = register("알파벳카드S");
+		UserCard goodDay = register("굿데이");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id)).andExpect(status().isNoContent());
+		mockMvc.perform(put("/api/v1/recommendations/{id}/payment", id)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"result\": \"PAID_RECOMMENDED\"}"))
+				.andExpect(status().isOk());
+
+		confirmWith(id, alphabet.getId())
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("PAYMENT_ALREADY_CONFIRMED"));
+
+		mockMvc.perform(get("/api/v1/recommendations/{id}", id))
+				.andExpect(jsonPath("$.recommendedUserCardId").value(goodDay.getId()));
+		mockMvc.perform(get("/api/v1/payment-records"))
+				.andExpect(jsonPath("$.records[0].result").value("PAID_RECOMMENDED"))
+				.andExpect(jsonPath("$.records[0].userCard.userCardId").value(goodDay.getId()))
+				.andExpect(jsonPath("$.records[0].userCard.productName").value("굿데이카드"))
+				.andExpect(jsonPath("$.records[0].savedBenefit").value(500));
+	}
+
+	@Test
+	@DisplayName("비교 결과에 없는 카드로 확정하려 하면 400이다")
+	void confirm_choosesCardNotInComparison() throws Exception {
+		register("알파벳카드S");
+		long id = createdId("{\"merchantId\": %d, \"amount\": 5000}".formatted(starbucks().getId()));
+
+		confirmWith(id, 999999L).andExpect(status().isBadRequest());
+		assertThat(paymentRecordRepository.findByRecommendationId(id)).isEmpty();
+	}
+
+	@Test
 	@DisplayName("추천 카드가 없는 결과(NO_BENEFIT)는 409 NO_RECOMMENDED_CARD이고 기록을 만들지 않는다")
 	void confirm_noRecommendedCard() throws Exception {
 		register("알파벳카드S");
@@ -361,6 +436,11 @@ class RecommendationControllerTest {
 		mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", 999999))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+	}
+
+	private ResultActions confirmWith(long id, Long userCardId) throws Exception {
+		return mockMvc.perform(post("/api/v1/recommendations/{id}/confirm", id)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"userCardId\": %d}".formatted(userCardId)));
 	}
 
 	private long createdId(String body) throws Exception {
