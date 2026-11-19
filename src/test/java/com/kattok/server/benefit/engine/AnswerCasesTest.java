@@ -213,6 +213,16 @@ class AnswerCasesTest {
 		assertThat(result.cards().get(1).expectedBenefit()).isZero();
 	}
 
+	@Test
+	@DisplayName("회귀(V36): JADE Prime 택시 50%는 50만원 구간과 200만원 구간 모두 받는다")
+	void regressionJadePrimeTaxiForBothTiers() {
+		String jade = "CR090";
+		PaymentContext taxi = PaymentContext.inCategory(categoryId("TAXI"), 8000, wednesday(14));
+
+		assertThat(single(jade, tier(jade, 1), taxi).expectedBenefit()).isEqualTo(4000);
+		assertThat(single(jade, tier(jade, 2), taxi).expectedBenefit()).isEqualTo(4000);
+	}
+
 	private CardBenefitResult single(String productKey, PerformanceState performance, PaymentContext payment) {
 		return recommend(List.of(new CardSetup(productKey, performance, null)), payment).cards().getFirst();
 	}
