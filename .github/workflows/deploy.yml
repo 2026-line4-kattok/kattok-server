@@ -7,6 +7,12 @@ on:
 permissions:
   contents: read
 
+# 연달아 머지하면 배포가 동시에 돌아 같은 컨테이너를 지우고 만들다 충돌한다.
+# 한 번에 하나씩만 돌리고, 진행 중인 배포는 끝까지 마친 뒤 다음 배포를 한다(대기 중인 배포는 가장 최근 것만 남는다).
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: false
+
 env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: kattok-server
