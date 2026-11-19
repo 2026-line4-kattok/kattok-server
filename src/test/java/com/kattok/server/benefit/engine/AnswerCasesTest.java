@@ -126,7 +126,7 @@ class AnswerCasesTest {
 	}
 
 	@Test
-	@DisplayName("회귀(V34): BC 바로 KaPick 15만원 구간, 메가MGC커피 1만원은 먹픽 7%로 700원, 대상 밖인 투썸플레이스는 0원")
+	@DisplayName("회귀(V35): BC 바로 KaPick 15만원 구간, 메가MGC커피 1만원은 먹픽 7%로 700원, 대상 밖인 투썸플레이스는 0원")
 	void regressionKaPickCoffee() {
 		String kaPick = "CT04";
 		CardBenefitResult atMegaCoffee = single(kaPick, tier(kaPick, 1),
