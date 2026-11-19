@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 920" width="1500" height="920" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f2328"/>
+    </marker>
+    <g id="person">
+      <circle cx="0" cy="-18" r="14" fill="none" stroke="#1f2328" stroke-width="3"/>
+      <path d="M-24,22 C-24,0 24,0 24,22 Z" fill="none" stroke="#1f2328" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+  </defs>
+
+  <rect width="1500" height="920" fill="#ffffff"/>
+
+  <!-- Developer -->
+  <use href="#person" x="95" y="88"/>
+  <text x="95" y="140" font-size="20" text-anchor="middle" fill="#1f2328">Developer</text>
+
+  <!-- GitHub -->
+  <rect x="290" y="40" width="260" height="110" rx="6" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+  <circle cx="345" cy="95" r="30" fill="#1f2328"/>
+  <path d="M332,84 L322,95 L332,106 M358,84 L368,95 L358,106 M349,80 L341,110" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="400" y="103" font-size="22" fill="#1f2328">GitHub</text>
+
+  <!-- GitHub Actions -->
+  <rect x="680" y="40" width="290" height="110" rx="6" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+  <rect x="705" y="65" width="60" height="60" rx="12" fill="#2088ff"/>
+  <path d="M726,80 L750,95 L726,110 Z" fill="#fff"/>
+  <text x="782" y="92" font-size="22" fill="#1f2328">GitHub Actions</text>
+  <text x="782" y="118" font-size="15" fill="#57606a">CI 테스트 · CD 배포</text>
+
+  <!-- Amazon ECR -->
+  <rect x="1100" y="40" width="290" height="110" rx="6" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+  <rect x="1125" y="65" width="60" height="60" rx="8" fill="#ed7100"/>
+  <rect x="1138" y="78" width="16" height="14" fill="none" stroke="#fff" stroke-width="2.5"/>
+  <rect x="1157" y="78" width="16" height="14" fill="none" stroke="#fff" stroke-width="2.5"/>
+  <rect x="1138" y="98" width="16" height="14" fill="none" stroke="#fff" stroke-width="2.5"/>
+  <rect x="1157" y="98" width="16" height="14" fill="none" stroke="#fff" stroke-width="2.5"/>
+  <text x="1202" y="92" font-size="22" fill="#1f2328">Amazon ECR</text>
+  <text x="1202" y="118" font-size="15" fill="#57606a">Docker 이미지 저장소</text>
+
+  <!-- top arrows -->
+  <line x1="150" y1="95" x2="282" y2="95" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="216" y="82" font-size="15" text-anchor="middle" fill="#1f2328">push · PR</text>
+  <line x1="550" y1="80" x2="672" y2="80" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="611" y="68" font-size="15" text-anchor="middle" fill="#1f2328">PR · main 머지</text>
+  <line x1="672" y1="114" x2="558" y2="114" stroke="#57606a" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  <text x="611" y="138" font-size="15" text-anchor="middle" fill="#57606a">CI 테스트 결과</text>
+  <line x1="970" y1="95" x2="1092" y2="95" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1031" y="82" font-size="15" text-anchor="middle" fill="#1f2328">image push</text>
+  <text x="1031" y="114" font-size="13" text-anchor="middle" fill="#57606a">main 머지 시</text>
+
+  <!-- AWS Cloud -->
+  <rect x="260" y="200" width="1200" height="690" rx="8" fill="none" stroke="#1f2328" stroke-width="2"/>
+  <rect x="282" y="218" width="54" height="54" rx="6" fill="#232f3e"/>
+  <text x="309" y="250" font-size="19" font-weight="700" text-anchor="middle" fill="#fff">aws</text>
+  <path d="M294,258 Q309,266 324,258" fill="none" stroke="#ff9900" stroke-width="3" stroke-linecap="round"/>
+  <text x="352" y="252" font-size="22" fill="#1f2328">AWS Cloud</text>
+
+  <!-- EC2 -->
+  <rect x="320" y="300" width="1100" height="560" rx="6" fill="none" stroke="#ed7100" stroke-width="2"/>
+  <g transform="translate(340,318)" fill="none" stroke="#ed7100" stroke-width="2.5">
+    <rect x="6" y="6" width="24" height="24" rx="2"/>
+    <path d="M12,0 V6 M18,0 V6 M24,0 V6 M12,30 V36 M18,30 V36 M24,30 V36 M0,12 H6 M0,18 H6 M0,24 H6 M30,12 H36 M30,18 H36 M30,24 H36"/>
+  </g>
+  <text x="388" y="343" font-size="22" fill="#ed7100">EC2</text>
+  <text x="432" y="343" font-size="16" fill="#57606a">Ubuntu</text>
+
+  <!-- NGINX -->
+  <rect x="400" y="380" width="420" height="90" rx="6" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+  <path d="M445,393 L470,407 L470,436 L445,450 L420,436 L420,407 Z" fill="#009639"/>
+  <path d="M435,437 V407 L455,437 V407" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+  <text x="490" y="420" font-size="22" fill="#1f2328">NGINX</text>
+  <text x="490" y="446" font-size="15" fill="#57606a">HTTPS · 리버스 프록시</text>
+
+  <!-- Docker network -->
+  <rect x="400" y="530" width="960" height="300" rx="6" fill="none" stroke="#1d63ed" stroke-width="2"/>
+  <g transform="translate(418,546)">
+    <rect width="28" height="28" rx="5" fill="#1d63ed"/>
+    <rect x="5" y="13" width="5" height="5" fill="#fff"/><rect x="11" y="13" width="5" height="5" fill="#fff"/><rect x="17" y="13" width="5" height="5" fill="#fff"/>
+    <rect x="11" y="7" width="5" height="5" fill="#fff"/>
+    <path d="M4,20 H24 Q22,25 14,25 Q6,25 4,20 Z" fill="#fff"/>
+  </g>
+  <text x="456" y="567" font-size="18" fill="#1d63ed">Docker · kattok-net</text>
+
+  <!-- Spring Boot -->
+  <rect x="450" y="620" width="400" height="120" rx="6" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+  <circle cx="505" cy="680" r="30" fill="#6db33f"/>
+  <path d="M492,693 C488,672 502,660 522,662 C522,682 510,694 492,693 Z" fill="#fff"/>
+  <path d="M494,692 C500,684 507,677 516,670" fill="none" stroke="#6db33f" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="552" y="672" font-size="22" fill="#1f2328">Spring Boot</text>
+  <text x="552" y="698" font-size="15" fill="#57606a">kattok-server · :8080</text>
+  <text x="552" y="720" font-size="15" fill="#57606a">계산 엔진 · REST API · JWT</text>
+
+  <!-- PostgreSQL -->
+  <rect x="910" y="620" width="400" height="120" rx="6" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+  <g transform="translate(940,650)" fill="none" stroke="#fff" stroke-width="2.5">
+    <rect x="-4" y="-4" width="64" height="68" rx="10" fill="#336791" stroke="none"/>
+    <ellipse cx="28" cy="12" rx="16" ry="6"/>
+    <path d="M12,12 V44 Q28,56 44,44 V12"/>
+    <path d="M12,28 Q28,40 44,28"/>
+  </g>
+  <text x="1018" y="672" font-size="22" fill="#1f2328">PostgreSQL 17</text>
+  <text x="1018" y="698" font-size="15" fill="#57606a">kattok-postgres</text>
+  <text x="1018" y="720" font-size="15" fill="#57606a">카드 혜택 데이터 · 사용자 기록</text>
+
+  <!-- inner arrows -->
+  <line x1="610" y1="470" x2="610" y2="612" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="622" y="508" font-size="15" fill="#1f2328">proxy :8080</text>
+  <line x1="858" y1="680" x2="902" y2="680" stroke="#1f2328" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="880" y="668" font-size="15" text-anchor="middle" fill="#1f2328">JPA</text>
+  <path d="M650,740 V772 H1110 V748" fill="none" stroke="#cc0200" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  <text x="880" y="798" font-size="15" text-anchor="middle" fill="#cc0200">서버 시작 시 Flyway 마이그레이션 · 스키마와 카드 혜택 데이터 적용</text>
+
+  <!-- deploy arrows -->
+  <line x1="825" y1="150" x2="825" y2="292" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="837" y="230" font-size="15" fill="#1f2328">SSH 배포 · 헬스 체크</text>
+  <line x1="1245" y1="150" x2="1245" y2="292" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1257" y="230" font-size="15" fill="#1f2328">docker pull</text>
+
+  <!-- Vercel -->
+  <rect x="35" y="250" width="170" height="70" rx="6" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+  <path d="M60,302 L78,270 L96,302 Z" fill="#000"/>
+  <text x="108" y="294" font-size="22" fill="#1f2328">Vercel</text>
+
+  <!-- User -->
+  <use href="#person" x="80" y="470"/>
+  <use href="#person" x="118" y="476"/>
+  <text x="98" y="530" font-size="20" text-anchor="middle" fill="#1f2328">User</text>
+  <line x1="98" y1="440" x2="98" y2="328" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="110" y="390" font-size="15" fill="#1f2328">HTTPS · 프론트엔드</text>
+  <polyline points="150,505 370,505 370,425 392,425" fill="none" stroke="#1f2328" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="160" y="494" font-size="15" fill="#1f2328">HTTPS · API</text>
+</svg>
