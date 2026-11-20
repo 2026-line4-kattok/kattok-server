@@ -10,7 +10,7 @@ spring:
 
 kattok:
   jwt:
-    # 운영(supabase 프로필)은 환경변수로만 넣는다. 로컬·테스트 키는 application-local.yml에 있다.
+    # 운영(prod 프로필)은 환경변수로만 넣는다. 로컬·테스트 키는 application-local.yml에 있다.
     secret: ${JWT_SECRET:}
     access-token-validity: 14d
   auth:
