@@ -1,0 +1,269 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1635 970" width="1635" height="970" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">
+<rect width="1635" height="970" fill="#ffffff"/>
+<text x="30" y="44" font-size="24" font-weight="700" fill="#1f2328">카똑 ERD</text>
+<rect x="875" y="31" width="14" height="14" rx="3" fill="#ed7100"/><text x="895" y="43" font-size="14" fill="#57606a">카드 상품·혜택 데이터</text>
+<rect x="1050" y="31" width="14" height="14" rx="3" fill="#2da44e"/><text x="1070" y="43" font-size="14" fill="#57606a">결제처·회원</text>
+<rect x="1225" y="31" width="14" height="14" rx="3" fill="#6e7cf2"/><text x="1245" y="43" font-size="14" fill="#57606a">보유 카드·카드 상태</text>
+<rect x="1400" y="31" width="14" height="14" rx="3" fill="#1d63ed"/><text x="1420" y="43" font-size="14" fill="#57606a">추천·결제 기록</text>
+<g fill="none" stroke="#8c959f" stroke-width="1.4" stroke-linejoin="round">
+<path d="M50,396.0 H12 V194.0 H50"/>
+<path d="M50,554.0 H20 V194.0 H50"/>
+<path d="M50,576.0 H28 V532.0 H50"/>
+<path d="M370,256.0 H312 V194.0 H300"/>
+<path d="M370,322.0 H320 V374.0 H300"/>
+<path d="M370,344.0 H328 V532.0 H300"/>
+<path d="M620,278.0 H632 V274.0 H670"/>
+<path d="M620,300.0 H640 V410.0 H670"/>
+<path d="M670,432.0 H648 V274.0 H670"/>
+<path d="M1000,352.0 H932 V194.0 H1000"/>
+<path d="M1000,374.0 H940 V118 H336 V194.0 H300"/>
+<path d="M1000,510.0 H948 V330.0 H1000"/>
+<path d="M1000,532.0 H956 V109 H344 V374.0 H300"/>
+<path d="M1000,690.0 H964 V330.0 H1000"/>
+<path d="M1000,712.0 H972 V100 H352 V532.0 H300"/>
+<path d="M1345,216.0 H1262 V194.0 H1250"/>
+<path d="M1345,238.0 H1270 V91 H980 V410.0 H920"/>
+<path d="M1345,260.0 H1278 V82 H988 V274.0 H920"/>
+<path d="M1345,440.0 H1286 V194.0 H1345"/>
+<path d="M1345,462.0 H1294 V330.0 H1250"/>
+<path d="M1345,620.0 H1302 V194.0 H1250"/>
+<path d="M1345,642.0 H1310 V194.0 H1345"/>
+<path d="M1345,664.0 H1318 V330.0 H1250"/>
+<path d="M1345,822.0 H1326 V598.0 H1345"/>
+<path d="M1345,844.0 H1334 V668.0 H1250"/>
+</g>
+<g transform="translate(50,150)">
+<rect width="250" height="146" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#ed7100"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">card_products</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">name</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">card_type</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">annual_fee</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">performance_type</text>
+</g>
+<g transform="translate(50,330)">
+<rect width="250" height="124" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#ed7100"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">card_performance_tiers</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">product_id</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">level</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">min_amount</text>
+</g>
+<g transform="translate(50,488)">
+<rect width="250" height="146" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#ed7100"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">benefit_cap_groups</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">product_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">parent_cap_group_id</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">cap_period</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">cap_amount</text>
+</g>
+<g transform="translate(370,190)">
+<rect width="250" height="278" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#ed7100"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">benefit_rules</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">product_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">category_id</text>
+<rect x="8" y="102" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="114" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">merchant_id</text>
+<rect x="8" y="124" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="136" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">required_tier_id</text>
+<rect x="8" y="146" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="158" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="158" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">cap_group_id</text>
+<text x="40" y="180" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">benefit_type</text>
+<text x="40" y="202" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">rate / amount</text>
+<text x="40" y="224" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">conditions (jsonb)</text>
+<text x="40" y="246" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">verification_status</text>
+<text x="40" y="268" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">stackable</text>
+</g>
+<g transform="translate(670,230)">
+<rect width="250" height="102" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#2da44e"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">merchant_categories</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">code</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">name</text>
+</g>
+<g transform="translate(670,366)">
+<rect width="250" height="124" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#2da44e"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">merchants</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">category_id</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">name</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">channel</text>
+</g>
+<g transform="translate(1000,150)">
+<rect width="250" height="102" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#2da44e"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">users</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#eaf6ee"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#2da44e">UK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">email</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">password_hash</text>
+</g>
+<g transform="translate(1000,286)">
+<rect width="250" height="124" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#6e7cf2"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">user_cards</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">user_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">product_id</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">deleted_at</text>
+</g>
+<g transform="translate(1000,444)">
+<rect width="250" height="146" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#6e7cf2"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">user_card_states</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">user_card_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">performance_tier_id</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">period_month</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">performance_status</text>
+</g>
+<g transform="translate(1000,624)">
+<rect width="250" height="146" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#6e7cf2"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">card_cap_balances</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">user_card_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">cap_group_id</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">period_start</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">remaining_amount</text>
+</g>
+<g transform="translate(1345,150)">
+<rect width="250" height="190" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#1d63ed"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">recommendations</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">user_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">merchant_id</text>
+<rect x="8" y="102" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="114" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">category_id</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">amount</text>
+<text x="40" y="158" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">overall_status</text>
+<text x="40" y="180" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">input_snapshot (jsonb)</text>
+</g>
+<g transform="translate(1345,374)">
+<rect width="250" height="146" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#1d63ed"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">recommendation_items</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">recommendation_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">user_card_id</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">rank_no</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">expected_benefit_max</text>
+</g>
+<g transform="translate(1345,554)">
+<rect width="250" height="168" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#1d63ed"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">payment_records</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">user_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">recommendation_id</text>
+<rect x="8" y="102" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="114" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">actual_user_card_id</text>
+<text x="40" y="136" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">status</text>
+<text x="40" y="158" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">saved_benefit</text>
+</g>
+<g transform="translate(1345,756)">
+<rect width="250" height="124" rx="7" fill="#fff" stroke="#d0d7de" stroke-width="1.2"/>
+<path d="M0,7 a7,7 0 0 1 7,-7 h236 a7,7 0 0 1 7,7 v23 h-250 z" fill="#1d63ed"/>
+<text x="12" y="20" font-size="13.5" font-weight="700" fill="#fff">payment_cap_effects</text>
+<rect x="8" y="36" width="24" height="16" rx="4" fill="#fff4d6"/><text x="20" y="48" font-size="9.5" font-weight="700" text-anchor="middle" fill="#9a6700">PK</text>
+<text x="40" y="48" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">id</text>
+<rect x="8" y="58" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="70" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="70" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">payment_record_id</text>
+<rect x="8" y="80" width="24" height="16" rx="4" fill="#e8eefc"/><text x="20" y="92" font-size="9.5" font-weight="700" text-anchor="middle" fill="#1d63ed">FK</text>
+<text x="40" y="92" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">balance_id</text>
+<text x="40" y="114" font-size="12" fill="#1f2328" font-family="SFMono-Regular, Menlo, Consolas, monospace">amount_delta</text>
+</g>
+<g fill="none" stroke="#57606a" stroke-width="1.4">
+<path d="M38,396.0 L50,390.0 M38,396.0 L50,396.0 M38,396.0 L50,402.0 M35,390.0 V402.0"/>
+<path d="M43,188.0 V200.0 M39,188.0 V200.0"/>
+<path d="M38,554.0 L50,548.0 M38,554.0 L50,554.0 M38,554.0 L50,560.0 M35,548.0 V560.0"/>
+<path d="M43,188.0 V200.0 M39,188.0 V200.0"/>
+<path d="M38,576.0 L50,570.0 M38,576.0 L50,576.0 M38,576.0 L50,582.0 M35,570.0 V582.0"/>
+<path d="M43,526.0 V538.0 M39,526.0 V538.0"/>
+<path d="M358,256.0 L370,250.0 M358,256.0 L370,256.0 M358,256.0 L370,262.0 M355,250.0 V262.0"/>
+<path d="M307,188.0 V200.0 M311,188.0 V200.0"/>
+<path d="M358,322.0 L370,316.0 M358,322.0 L370,322.0 M358,322.0 L370,328.0 M355,316.0 V328.0"/>
+<path d="M307,368.0 V380.0 M311,368.0 V380.0"/>
+<path d="M358,344.0 L370,338.0 M358,344.0 L370,344.0 M358,344.0 L370,350.0 M355,338.0 V350.0"/>
+<path d="M307,526.0 V538.0 M311,526.0 V538.0"/>
+<path d="M632,278.0 L620,272.0 M632,278.0 L620,278.0 M632,278.0 L620,284.0 M635,272.0 V284.0"/>
+<path d="M663,268.0 V280.0 M659,268.0 V280.0"/>
+<path d="M632,300.0 L620,294.0 M632,300.0 L620,300.0 M632,300.0 L620,306.0 M635,294.0 V306.0"/>
+<path d="M663,404.0 V416.0 M659,404.0 V416.0"/>
+<path d="M658,432.0 L670,426.0 M658,432.0 L670,432.0 M658,432.0 L670,438.0 M655,426.0 V438.0"/>
+<path d="M663,268.0 V280.0 M659,268.0 V280.0"/>
+<path d="M988,352.0 L1000,346.0 M988,352.0 L1000,352.0 M988,352.0 L1000,358.0 M985,346.0 V358.0"/>
+<path d="M993,188.0 V200.0 M989,188.0 V200.0"/>
+<path d="M988,374.0 L1000,368.0 M988,374.0 L1000,374.0 M988,374.0 L1000,380.0 M985,368.0 V380.0"/>
+<path d="M307,188.0 V200.0 M311,188.0 V200.0"/>
+<path d="M988,510.0 L1000,504.0 M988,510.0 L1000,510.0 M988,510.0 L1000,516.0 M985,504.0 V516.0"/>
+<path d="M993,324.0 V336.0 M989,324.0 V336.0"/>
+<path d="M988,532.0 L1000,526.0 M988,532.0 L1000,532.0 M988,532.0 L1000,538.0 M985,526.0 V538.0"/>
+<path d="M307,368.0 V380.0 M311,368.0 V380.0"/>
+<path d="M988,690.0 L1000,684.0 M988,690.0 L1000,690.0 M988,690.0 L1000,696.0 M985,684.0 V696.0"/>
+<path d="M993,324.0 V336.0 M989,324.0 V336.0"/>
+<path d="M988,712.0 L1000,706.0 M988,712.0 L1000,712.0 M988,712.0 L1000,718.0 M985,706.0 V718.0"/>
+<path d="M307,526.0 V538.0 M311,526.0 V538.0"/>
+<path d="M1333,216.0 L1345,210.0 M1333,216.0 L1345,216.0 M1333,216.0 L1345,222.0 M1330,210.0 V222.0"/>
+<path d="M1257,188.0 V200.0 M1261,188.0 V200.0"/>
+<path d="M1333,238.0 L1345,232.0 M1333,238.0 L1345,238.0 M1333,238.0 L1345,244.0 M1330,232.0 V244.0"/>
+<path d="M927,404.0 V416.0 M931,404.0 V416.0"/>
+<path d="M1333,260.0 L1345,254.0 M1333,260.0 L1345,260.0 M1333,260.0 L1345,266.0 M1330,254.0 V266.0"/>
+<path d="M927,268.0 V280.0 M931,268.0 V280.0"/>
+<path d="M1333,440.0 L1345,434.0 M1333,440.0 L1345,440.0 M1333,440.0 L1345,446.0 M1330,434.0 V446.0"/>
+<path d="M1338,188.0 V200.0 M1334,188.0 V200.0"/>
+<path d="M1333,462.0 L1345,456.0 M1333,462.0 L1345,462.0 M1333,462.0 L1345,468.0 M1330,456.0 V468.0"/>
+<path d="M1257,324.0 V336.0 M1261,324.0 V336.0"/>
+<path d="M1333,620.0 L1345,614.0 M1333,620.0 L1345,620.0 M1333,620.0 L1345,626.0 M1330,614.0 V626.0"/>
+<path d="M1257,188.0 V200.0 M1261,188.0 V200.0"/>
+<path d="M1338,636.0 V648.0 M1334,636.0 V648.0"/>
+<path d="M1338,188.0 V200.0 M1334,188.0 V200.0"/>
+<path d="M1333,664.0 L1345,658.0 M1333,664.0 L1345,664.0 M1333,664.0 L1345,670.0 M1330,658.0 V670.0"/>
+<path d="M1257,324.0 V336.0 M1261,324.0 V336.0"/>
+<path d="M1333,822.0 L1345,816.0 M1333,822.0 L1345,822.0 M1333,822.0 L1345,828.0 M1330,816.0 V828.0"/>
+<path d="M1338,592.0 V604.0 M1334,592.0 V604.0"/>
+<path d="M1333,844.0 L1345,838.0 M1333,844.0 L1345,844.0 M1333,844.0 L1345,850.0 M1330,838.0 V850.0"/>
+<path d="M1257,662.0 V674.0 M1261,662.0 V674.0"/>
+</g>
+<g font-size="13" fill="#57606a"><path d="M30,936 H70 M58,936 L70,930 M58,936 L70,942 M55,930 V942 M38,930 V942 M42,930 V942" stroke="#57606a" stroke-width="1.4" fill="none"/><text x="80" y="940">왼쪽 ‖ 하나 · 오른쪽 까마귀발 여러 개 (1:N)</text><text x="420" y="940">payment_records ↔ recommendations는 1:1 · 핵심 테이블 14개와 주요 컬럼만 표시 (전체 18개)</text></g>
+</svg>

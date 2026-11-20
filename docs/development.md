@@ -1,0 +1,169 @@
+# 개발·협업 가이드
+
+## 개발 환경
+
+- JDK 21
+- Docker (Compose 포함)
+
+Gradle은 Wrapper(`./gradlew`)를 사용하므로 따로 설치하지 않아도 됩니다. 기본 `java`가 21이 아니어도 Gradle이 설치된 JDK 21을 찾아 빌드합니다.
+
+클론한 뒤 Git 훅을 한 번 활성화해 주세요. 커밋 메시지와 브랜치 이름을 로컬에서 검사합니다.
+
+```bash
+git config core.hooksPath .githooks
+```
+
+## 로컬 실행
+
+1. PostgreSQL을 실행합니다.
+
+```bash
+docker compose up -d
+```
+
+2. 서버를 실행합니다. 별도 설정이 없으면 `local` 프로필로 실행됩니다.
+
+```bash
+./gradlew bootRun
+```
+
+3. 서버 상태를 확인합니다. `{"groups":["liveness","readiness"],"status":"UP"}`처럼 `status`가 `UP`이면 정상입니다.
+
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+`local` 프로필에는 개발용 JWT 키가 들어 있고, 토큰 없는 요청을 시연용 테스트 계정으로 처리하는 설정(`kattok.auth.anonymous-demo-user`)이 켜져 있습니다. 프론트엔드 API 연결 테스트를 위한 임시 설정이라 운영 프로필에서는 꺼져 있습니다.
+
+### 환경변수
+
+| 이름 | 필요한 곳 | 설명 |
+| --- | --- | --- |
+| `SPRING_PROFILES_ACTIVE` | 운영 | 운영 서버는 `prod`로 실행합니다. 비우면 `local`입니다. |
+| `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` | 운영 | PostgreSQL 접속 정보 |
+| `JWT_SECRET` | 운영 | JWT 서명 키. 32바이트 이상이어야 하며, 없으면 서버가 시작하지 않습니다. |
+| `DEMO_USER_PASSWORD` | 운영 | 시연용 테스트 계정(`demo@kattok.app`) 비밀번호. 8자 이상이며, 없으면 테스트 계정으로 로그인할 수 없습니다. |
+| `KATTOK_ANONYMOUS_DEMO_USER` | 선택 | `true`면 토큰 없는 요청을 테스트 계정으로 처리합니다. 기본값 `false` |
+| `DB_PORT` | 로컬 | 로컬 PostgreSQL 호스트 포트. 기본값 `5433` |
+
+비밀값은 코드나 마이그레이션에 넣지 않고 환경변수(운영은 GitHub Secrets)로만 넘깁니다.
+
+### 로컬 DB 정보
+
+| 항목 | 값 |
+| --- | --- |
+| Host / Port | `localhost:5433` |
+| Database | `kattok` |
+| User / Password | `kattok` / `kattok` |
+
+다른 로컬 PostgreSQL과 겹치지 않도록 호스트 포트는 5433을 사용합니다. 5433도 사용 중이면 `DB_PORT`로 바꿀 수 있습니다. DB 실행과 서버 실행에 같은 값을 넘겨주세요.
+
+```bash
+DB_PORT=5434 docker compose up -d
+```
+
+```bash
+DB_PORT=5434 ./gradlew bootRun
+```
+
+DB를 중지하거나, 데이터까지 지우고 초기화할 때는 다음 명령을 사용합니다.
+
+```bash
+docker compose down
+```
+
+```bash
+docker compose down -v
+```
+
+### DB 스키마 변경
+
+스키마는 Flyway로만 변경합니다. JPA는 시작할 때 엔티티와 스키마가 일치하는지 검증만 하고(`ddl-auto: validate`), 스키마를 직접 바꾸지 않습니다.
+
+`src/main/resources/db/migration`에 `V<번호>__<설명>.sql` 파일을 추가하면 서버 시작 시 적용됩니다. 이미 머지된 마이그레이션 파일은 수정하지 말고 새 파일을 추가해 주세요. 번호는 PR을 머지하기 직전 `main`의 마지막 번호 다음으로 맞춥니다.
+
+## API 문서 (Swagger UI)
+
+서버 실행 후 [Swagger UI](http://localhost:8080/swagger-ui/index.html)에서 현재 코드의 API를 조회·호출할 수 있습니다. OpenAPI JSON은 `/v3/api-docs`입니다. 문서 조회는 토큰 없이 가능하며, 실제 API 호출에는 인증이 필요합니다.
+
+1. `/api/v1/auth/login` 또는 `/api/v1/auth/signup`을 호출합니다.
+2. 응답의 `accessToken` 값을 복사해 화면의 **Authorize**에 입력합니다. `Bearer ` 접두어는 붙이지 않습니다.
+3. 보호된 API를 **Try it out**으로 호출합니다. 토큰은 새로고침 이후 유지하지 않습니다.
+
+자동 생성 문서는 현재 컨트롤러·DTO를 기준으로 합니다. 카드 등록·상태 수정의 필드 생략/`null` 처리, 상태별 동작, 오류·정책 설명은 [노션 API 명세서](https://app.notion.com/p/API-412d0fe5fefa81cca30eeda8a2021f30)가 기준입니다.
+
+## 테스트
+
+Testcontainers가 임시 PostgreSQL을 띄우므로 Docker가 실행 중이어야 합니다. `docker compose`로 DB를 미리 띄울 필요는 없습니다.
+
+```bash
+./gradlew test
+```
+
+- **계산 엔진 단위 테스트**: 실적 상태, 한도, 동률 처리, 조건 판정
+- **정답 케이스 테스트**(`AnswerCasesTest`): 실제 카드 데이터로 "이 결제에는 이 카드가 몇 원"을 손으로 계산한 결과와 비교합니다. 데이터 오류를 고칠 때마다 회귀 케이스를 추가합니다.
+- **API 통합 테스트**: MockMvc로 요청·응답, 오류 코드, 결제 확인 후 한도 차감·복원까지 확인합니다.
+- **데이터 정합성 테스트**(`CardDataIntegrityTest`): 적재된 카드 혜택 데이터 전체를 검사합니다.
+
+`main`으로 PR을 올리거나 `main`에 머지하면 GitHub Actions가 같은 테스트를 실행합니다.
+
+## 배포
+
+`main`에 머지하면 GitHub Actions(`.github/workflows/deploy.yml`)가 자동으로 배포합니다.
+
+1. Docker 이미지를 빌드해 Amazon ECR에 푸시합니다.
+2. EC2에 SSH로 접속해 새 이미지로 컨테이너를 다시 띄웁니다. 운영 프로필(`prod`)과 GitHub Secrets의 비밀값을 환경변수로 넘깁니다.
+3. `/actuator/health`가 정상 응답할 때까지 최대 3분 기다립니다. 응답이 없으면 서버 로그를 남기고 배포를 실패로 표시합니다.
+
+연달아 머지해도 배포는 한 번에 하나씩 순서대로 실행됩니다.
+
+## 브랜치
+
+`main`을 기준으로 작업 브랜치를 만들고, PR로 머지합니다.
+
+- `main`: 항상 빌드와 테스트가 통과하는 상태를 유지합니다. 직접 푸시하지 않습니다.
+- 작업 브랜치: `<type>/<이슈번호>-<kebab-case 설명>` 형식을 사용합니다. 이슈가 없으면 번호는 생략할 수 있습니다. `type`은 커밋 메시지와 같습니다.
+
+```text
+feat/12-card-search
+fix/34-benefit-limit-calculation
+chore/project-setup
+```
+
+작업 흐름은 다음과 같습니다.
+
+1. 최신 `main`에서 작업 브랜치를 만듭니다.
+2. 작업 후 `main`으로 PR을 올립니다. PR 본문은 What / Why / Verified / Related 템플릿을 따릅니다.
+3. 팀원 1명 이상의 승인을 받고, 테스트 통과를 확인한 뒤 Squash and merge로 머지합니다. 위에 다른 PR이 쌓여 있으면 쌓인 PR이 깨지지 않도록 Create a merge commit으로 머지합니다. PR 제목은 커밋 메시지 규칙을 따릅니다.
+4. 머지한 브랜치는 삭제합니다.
+
+## 커밋 메시지
+
+```text
+<type>(<scope>): <제목>
+
+<본문(선택)>
+```
+
+| type | 용도 |
+| --- | --- |
+| `feat` | 기능 추가 |
+| `fix` | 버그 수정 |
+| `refactor` | 동작 변경 없는 코드 개선 |
+| `test` | 테스트 추가·수정 |
+| `docs` | 문서 변경 |
+| `chore` | 설정 등 기타 작업 |
+| `build` | 빌드·의존성 변경 |
+| `ci` | CI 설정 변경 |
+
+- `scope`는 선택이며, 영어 소문자로 변경 영역을 적습니다. (예: `card`, `recommendation`, `payment`)
+- 제목은 한글로 50자 이내로 간결하게 쓰고, 끝에 마침표를 붙이지 않습니다.
+- 본문에는 무엇을 왜 바꿨는지 적습니다.
+
+```text
+feat(card): 보유 카드 등록 API 추가
+fix(recommendation): 미확인 실적을 충족으로 계산하는 문제 수정
+docs: 로컬 실행 방법 추가
+```
+
+코드 작성 규칙은 [conventions.md](conventions.md)를 따릅니다.
