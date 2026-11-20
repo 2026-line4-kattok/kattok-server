@@ -7,6 +7,10 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  flyway:
+    placeholders:
+      # 시연용 테스트 계정을 발표용 상태로 맞추는 마이그레이션(V37) 실행 여부. 운영 배포에서만 true다.
+      demoseed: ${KATTOK_DEMO_SEED:false}
 
 kattok:
   jwt:
