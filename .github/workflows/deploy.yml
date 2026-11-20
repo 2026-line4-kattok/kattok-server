@@ -57,6 +57,7 @@ jobs:
               -e SPRING_PROFILES_ACTIVE=prod \
               -e JWT_SECRET=$JWT_SECRET \
               -e DEMO_USER_PASSWORD=$DEMO_USER_PASSWORD \
+              -e KATTOK_DEMO_SEED=true \
               ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
             # docker run은 컨테이너만 띄우고 바로 끝나서, 서버가 시작하다 실패해도 배포가 성공으로 보인다.
             # 서버가 정상 응답할 때까지 최대 3분 기다리고, 끝내 응답이 없으면 로그를 남기고 실패시킨다.
