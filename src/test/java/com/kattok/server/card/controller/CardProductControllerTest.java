@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.kattok.server.TestcontainersConfiguration;
@@ -21,6 +22,9 @@ class CardProductControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@Autowired
+	private JdbcTemplate jdbc;
 
 	@Test
 	@DisplayName("상품명 일부로 검색하면 일치하는 카드가 나온다")
@@ -47,6 +51,19 @@ class CardProductControllerTest {
 		mockMvc.perform(get("/api/v1/card-products").param("cardType", "BOGUS"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	@DisplayName("혜택을 계산할 수 없는 카드(UNVERIFIED)는 검색 목록에 나오지 않는다")
+	void searchHidesUnverifiedCards() throws Exception {
+		mockMvc.perform(get("/api/v1/card-products").param("keyword", "LOCA 365"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
+		mockMvc.perform(get("/api/v1/card-products"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.dataStatus == 'UNVERIFIED')]").isEmpty())
+				.andExpect(jsonPath("$.length()").value(jdbc.queryForObject(
+						"select count(*) from card_products where data_status <> 'UNVERIFIED'", Integer.class)));
 	}
 
 	@Test

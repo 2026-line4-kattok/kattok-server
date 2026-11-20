@@ -17,6 +17,7 @@ import com.kattok.server.card.dto.CardProductResponse;
 import com.kattok.server.card.entity.CardPerformanceTier;
 import com.kattok.server.card.entity.CardProduct;
 import com.kattok.server.card.entity.CardType;
+import com.kattok.server.card.entity.DataStatus;
 import com.kattok.server.card.repository.CardPerformanceTierRepository;
 import com.kattok.server.card.repository.CardProductRepository;
 import com.kattok.server.card.repository.UserCardRepository;
@@ -38,6 +39,10 @@ public class CardProductService {
 	private final CurrentUserProvider currentUserProvider;
 	private final ProductRulesReader productRulesReader;
 
+	/**
+	 * 카드 등록 화면의 상품 검색. 혜택을 계산할 수 없는 카드(UNVERIFIED)는 등록해도 추천에서 빠지기만 하므로 목록에 보이지 않는다.
+	 * 혜택이 모두 지원 업종 밖이거나, 간편결제 전용이거나, 기본값 없는 선택형이라 계산할 혜택이 없는 카드들이다.
+	 */
 	public List<CardProductResponse> search(Long issuerId, String keyword, CardType cardType) {
 		Set<Long> ownedProductIds = ownedProductIds();
 
@@ -45,6 +50,7 @@ public class CardProductService {
 				issuerId, blankToNull(keyword), cardType == null ? null : cardType.name());
 
 		return products.stream()
+				.filter(product -> product.getDataStatus() != DataStatus.UNVERIFIED)
 				.map(product -> CardProductResponse.of(product, ownedProductIds.contains(product.getId())))
 				.toList();
 	}
